@@ -1,0 +1,21 @@
+question,answer,category
+How do I view my invoice?,You can view your invoice by logging into your account and navigating to the Billing section under Account Settings.,billing
+What payment methods do you accept?,"We accept Visa, Mastercard, American Express, PayPal, and UPI payments.",billing
+How do I update my billing address?,Go to Account Settings > Billing > Edit Billing Address and save your changes.,billing
+Why was my card declined?,Your card may have been declined due to insufficient funds, incorrect details, or a bank block. Please contact your bank or try another payment method.,billing
+Can I get a receipt for my purchase?,Yes. Receipts are automatically emailed after every successful payment. You can also download them from the Billing section in your account.,billing
+How long does standard shipping take?,Standard shipping takes 5–7 business days within the country.,shipping
+Do you offer express shipping?,Yes. Express shipping is available at checkout and delivers within 1–2 business days for an additional fee.,shipping
+How can I track my order?,Once your order ships you will receive a tracking number via email. Use it on our website or the courier's site to track your package.,shipping
+Do you ship internationally?,Yes. We ship to over 50 countries. International delivery typically takes 10–15 business days.,shipping
+What happens if my package is lost?,If your package is lost in transit please contact our support team within 30 days of the expected delivery date and we will investigate and reship or refund.,shipping
+What is your return policy?,We accept returns within 30 days of delivery. Items must be unused and in original packaging.,returns
+How do I initiate a return?,Log into your account go to Orders select the item and click Return. Follow the instructions to print a return label.,returns
+How long does a refund take?,Refunds are processed within 5–7 business days after we receive the returned item.,returns
+Can I exchange an item instead of returning it?,Yes. Select Exchange instead of Return when initiating the process and choose your replacement item.,returns
+Are there items that cannot be returned?,"Digital downloads, personalized items, and perishable goods cannot be returned.",returns
+What warranty do your products come with?,All products come with a 1-year manufacturer warranty covering defects in materials and workmanship.,product
+How do I register my product?,Visit our website go to Product Registration enter your serial number and purchase date to register.,product
+Where can I find the user manual?,User manuals are available on the product page under the Downloads tab and are also included in the product box.,product
+My product stopped working. What should I do?,First check the troubleshooting guide in the user manual. If the issue persists contact our support team with your order number and a description of the problem.,product
+Do you sell replacement parts?,Yes. Replacement parts are available on our website under the Accessories section for most products.,product

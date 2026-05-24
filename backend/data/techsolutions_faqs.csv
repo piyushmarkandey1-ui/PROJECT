@@ -1,0 +1,17 @@
+question,answer,category
+How do I reset my password?,Go to the login page and click 'Forgot Password'. Enter your email address and we'll send you a reset link.,account
+How do I change my email address?,Log in to your account, go to Settings > Profile, and update your email address.,account
+How do I delete my account?,Please contact our support team to request account deletion. We'll process your request within 48 hours.,account
+What is your SLA for support tickets?,We respond to all support tickets within 24 hours on business days.,support
+Do you offer phone support?,Phone support is available for Enterprise customers only. Standard and Basic customers can use our chat and email support.,support
+What are your support hours?,Our support team is available Monday-Friday, 9 AM to 6 PM EST.,support
+How do I upgrade my plan?,Go to Billing > Plan and select the plan you want to upgrade to. Follow the checkout process.,billing
+Can I downgrade my plan?,Yes, you can downgrade at any time. The new plan will take effect at your next billing cycle.,billing
+What payment methods do you accept?,We accept all major credit cards, PayPal, and bank transfers for Enterprise customers.,billing
+Do you offer a free trial?,Yes! We offer a 14-day free trial for all our plans. No credit card required.,billing
+How do I cancel my subscription?,Go to Billing > Subscription and click Cancel Subscription. Your subscription will remain active until the end of your current billing period.,billing
+What programming languages do you support?,Our platform supports Python, JavaScript, TypeScript, Java, Go, and Ruby.,product
+How do I integrate your API?,Check out our comprehensive API documentation at docs.techsolutions.com/api. We also have SDKs for all major languages.,product
+What is your uptime guarantee?,We offer a 99.9% uptime SLA for all paid plans.,product
+Do you have an on-premise deployment options?,Yes! Enterprise customers can deploy our platform on-premise or in a private cloud.,product
+How do I get API access?,Sign up for an account and go to Settings > API Keys to generate your API key.,product
