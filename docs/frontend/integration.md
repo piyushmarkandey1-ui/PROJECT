@@ -17,86 +17,74 @@ Visit http://localhost:5173
 ### Production Build
 ```bash
 npm run build
-npm run preview
+npm run preview   # preview locally before deploying
 ```
+
+---
 
 ## Environment Configuration
 
-Create a `.env` file in the frontend directory:
+Create `.env` in the `frontend/` directory:
 ```env
 VITE_API_URL=http://localhost:8000
 ```
 
-**Production (Vercel):**
-Set `VITE_API_URL` in Vercel environment variables to your backend URL.
+**Production (Vercel):** Set `VITE_API_URL` to your Railway backend URL in Vercel's environment variables dashboard.
 
-## Integrating ChatWidget
+---
 
-### Basic Integration
-```jsx
-import ChatWidget from './components/ChatWidget';
+## Connecting to a Company
 
-function App() {
-  return (
-    <div className="app">
-      <ChatWidget
-        companySlug="your-company-slug"
-        companyName="Your Company Name"
-      />
-    </div>
-  );
-}
-```
+The chat widget defaults to `demo-corp`. To use a different company, update the `companySlug` in `api.js`:
 
-### Advanced Integration
-```jsx
-import ChatWidget from './components/ChatWidget';
-import { useState } from 'react';
-
-function App() {
-  const [company, setCompany] = useState({
-    slug: 'acme-corp',
-    name: 'Acme Corporation',
-    initialMessage: 'Welcome to Acme Corp! How can we help?'
-  });
-
-  return (
-    <div className="app">
-      <ChatWidget
-        companySlug={company.slug}
-        companyName={company.name}
-        initialMessage={company.initialMessage}
-      />
-    </div>
-  );
-}
-```
-
-## Customization
-
-### Styling
-The project uses Tailwind CSS. Customize in `tailwind.config.js`:
 ```javascript
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {
-      colors: {
-        primary: '#3b82f6',
-        secondary: '#64748b',
-      },
-    },
-  },
-  plugins: [],
-}
+// src/services/api.js
+export async function sendMessageStream(sessionId, message, onToken, companySlug = 'your-company-slug') {
 ```
 
-### Component Customization
-Override component styles using Tailwind utility classes or custom CSS in `index.css`.
+Or pass it dynamically from `ChatWidget.jsx`:
+```jsx
+const data = await sendMessageStream(sessionId, text, onToken, 'acme-corp')
+```
+
+---
+
+## Streaming Integration
+
+The frontend uses Server-Sent Events (SSE) for streaming. The `sendMessageStream` function handles the full SSE lifecycle:
+
+```javascript
+import { sendMessageStream } from './services/api'
+
+let accumulated = ''
+
+const metadata = await sendMessageStream(
+  sessionId,
+  userMessage,
+  (token, reset = false) => {
+    if (reset) accumulated = ''   // model switched mid-stream
+    else accumulated += token
+    updateUI(accumulated)
+  },
+  'demo-corp'
+)
+
+// After streaming completes:
+console.log(metadata.session_id)   // sync session
+console.log(metadata.confidence)   // 0.85 = KB hit, 0.55 = no KB match
+console.log(metadata.is_escalated) // true if escalated
+```
+
+### SSE Event Types
+
+| Event | Meaning |
+|-------|---------|
+| `{ token: "..." }` | Next token to append |
+| `{ reset: true }` | Model switched — clear accumulated text |
+| `{ done: true, session_id, confidence, sources, turn_count }` | Stream complete |
+| `{ token: "...", error: true }` | All models rate-limited |
+
+---
 
 ## Deployment (Vercel)
 
@@ -105,89 +93,77 @@ Override component styles using Tailwind utility classes or custom CSS in `index
 npm install -g vercel
 ```
 
-### 2. Deploy
+### 2. Build and deploy
 ```bash
 cd frontend
-vercel
-```
-
-### 3. Production Deployment
-```bash
+npm run build
 vercel --prod
 ```
 
-### 4. Set Environment Variables
-In Vercel dashboard:
-- Go to Settings → Environment Variables
-- Add `VITE_API_URL` with your backend URL
-
-## Testing
-
-### Unit Tests
-```bash
-# Add test framework (e.g., Jest, Vitest)
-npm install -D vitest @testing-library/react @testing-library/jest-dom
+### 3. Set environment variable
+In Vercel dashboard → Settings → Environment Variables:
+```
+VITE_API_URL = https://your-backend.railway.app
 ```
 
-### E2E Tests
-```bash
-# Add Playwright or Cypress
-npm install -D @playwright/test
-npx playwright install
-```
+---
 
-## Performance Optimization
+## Customisation
 
-### Code Splitting
-Vite automatically code-splits your application.
+### Change Company
+Update the default `companySlug` in `api.js` or pass it as a prop.
 
-### Lazy Loading
+### Change Colours
+Edit Tailwind classes in `ChatWidget.jsx`:
+- Header: `bg-blue-600` → any Tailwind colour
+- User bubbles: `bg-blue-600` → any colour
+- Background: `bg-gray-50` → any colour
+
+### Change Initial Message
+In `ChatWidget.jsx`:
 ```jsx
-import { lazy, Suspense } from 'react';
+const [messages, setMessages] = useState([
+  {
+    role: 'assistant',
+    content: "Hi! 👋 Welcome to Acme Corp. How can I help you today?",
+    timestamp: new Date().toISOString(),
+  },
+])
+```
 
-const ChatWidget = lazy(() => import('./components/ChatWidget'));
+### Embed in Existing App
+```jsx
+import ChatWidget from './components/ChatWidget'
 
-function App() {
+export default function SupportPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <div className="h-screen">
       <ChatWidget />
-    </Suspense>
-  );
+    </div>
+  )
 }
 ```
 
-### Image Optimization
-Use Vite's built-in image optimization or a CDN.
+---
 
 ## Troubleshooting
 
-### Common Issues
+### "Could not reach the server: Failed to fetch"
+- Backend is not running — start it: `uvicorn main:app --port 8000`
+- `VITE_API_URL` is wrong — check `.env`
+- CORS issue — verify backend `allow_origins` includes your frontend URL
 
-1. **API connection errors**
-   - Verify `VITE_API_URL` is correct
-   - Check CORS settings on backend
-   - Ensure backend is running
+### Messages send but no response appears
+- Check browser DevTools → Network → the `/api/chat/stream` request
+- If status is 404: company slug doesn't exist — create it first
+- If status is 500: check backend logs for the error
 
-2. **Chat not loading**
-   - Check browser console for errors
-   - Verify company slug is valid
-   - Check network tab for failed requests
+### Streaming stops mid-message
+- Model quota hit — backend sends `{ reset: true }` and switches to fallback model
+- The frontend clears accumulated text and continues from the new model
+- If all models are exhausted, a rate-limit message is shown
 
-3. **Styling issues**
-   - Clear browser cache
-   - Verify Tailwind config
-   - Check for conflicting CSS
-
-## Browser Support
-
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
-
-## Accessibility
-
-- ARIA labels on interactive elements
-- Keyboard navigation support
-- High contrast mode compatibility
-- Screen reader support
+### Session resets on page refresh
+- Expected behaviour — session ID is in `localStorage` but session data is in-memory on the backend
+- Sessions expire after 30 minutes of inactivity
+- After a server restart, all sessions are lost (in-memory storage)

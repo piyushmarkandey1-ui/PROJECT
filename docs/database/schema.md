@@ -1,63 +1,91 @@
 # Database Schema
 
-## SQL Database Schema
+## SQL Database
 
 ### Companies Table
 
-**Table Name:** `companies`
+**Table name:** `companies`
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
-| `id` | VARCHAR(36) | PRIMARY KEY | UUID identifier |
-| `name` | VARCHAR(100) | NOT NULL, INDEXED | Company display name |
-| `slug` | VARCHAR(50) | UNIQUE, NOT NULL, INDEXED | URL-safe company identifier |
-| `email` | VARCHAR(255) | NOT NULL | Company contact email |
-| `contact_phone` | VARCHAR(50) | NULLABLE | Company phone number |
+| `id` | VARCHAR(36) | PRIMARY KEY | UUID v4 |
+| `name` | VARCHAR(100) | NOT NULL, INDEXED | Display name |
+| `slug` | VARCHAR(50) | UNIQUE, NOT NULL, INDEXED | URL-safe identifier (auto-generated) |
+| `email` | VARCHAR(255) | NOT NULL | Contact email |
+| `contact_phone` | VARCHAR(50) | NULLABLE | Contact phone |
 | `api_key_hash` | TEXT | NOT NULL, INDEXED | SHA-256 hash of API key |
-| `created_at` | DATETIME | NOT NULL | Creation timestamp |
-| `updated_at` | DATETIME | NOT NULL | Last update timestamp |
+| `created_at` | DATETIME | NOT NULL | UTC creation timestamp |
+| `updated_at` | DATETIME | NOT NULL | UTC last-update timestamp |
 
-### Indexes
+**Indexes:**
 - PRIMARY KEY on `id`
 - UNIQUE INDEX on `slug`
 - INDEX on `name`
-- INDEX on `api_key_hash`
+- INDEX on `api_key_hash` (for fast API key lookups)
 
-## SQLAlchemy Model
-
+**SQLAlchemy model:**
 ```python
-from datetime import datetime
-from sqlalchemy import Column, DateTime, String, Text
-from database.db import Base
-
 class Company(Base):
     __tablename__ = "companies"
 
-    id = Column(String(36), primary_key=True, index=True)
-    name = Column(String(100), nullable=False, index=True)
-    slug = Column(String(50), unique=True, nullable=False, index=True)
-    email = Column(String(255), nullable=False)
-    contact_phone = Column(String(50), nullable=True)
+    id           = Column(String(36), primary_key=True, index=True)
+    name         = Column(String(100), nullable=False, index=True)
+    slug         = Column(String(50), unique=True, nullable=False, index=True)
+    email        = Column(String(255), nullable=False)
+    contact_phone= Column(String(50), nullable=True)
     api_key_hash = Column(Text, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at   = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at   = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 ```
+
+---
+
+## API Key Generation & Storage
+
+```python
+import secrets, string, hashlib
+
+def _generate_api_key(length: int = 32) -> str:
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+def _hash_api_key(api_key: str) -> str:
+    return hashlib.sha256(api_key.encode("utf-8")).hexdigest()
+```
+
+- Plaintext key returned **once** at creation — never stored
+- All subsequent lookups compare SHA-256 hashes
+
+---
+
+## Slug Generation
+
+```python
+def _generate_slug(name: str) -> str:
+    slug = name.lower().strip()
+    slug = ''.join(c if c.isalnum() or c == ' ' else '-' for c in slug)
+    slug = slug.replace(' ', '-').replace('--', '-').rstrip('-')
+    if len(slug) < 3:
+        slug = slug + str(uuid.uuid4())[:3]
+    return slug[:50]
+```
+
+On collision, a Unix timestamp suffix is appended: `acme-corp-1748123456`.
+
+---
 
 ## Vector Database (ChromaDB)
 
 ### Collection Naming
-Each company has its own ChromaDB collection with the format:
 ```
 kb_{company_slug}
 ```
 
-Example:
-- Company: `acme-corp` → Collection: `kb_acme-corp`
-- Company: `tech-company` → Collection: `kb_tech-company`
+Examples:
+- `acme-corp` → `kb_acme-corp`
+- `tech solutions` → `kb_tech-solutions`
 
-### Collection Structure
-
-**Metadata:**
+### Collection Metadata
 ```json
 {
   "hnsw:space": "cosine",
@@ -65,35 +93,52 @@ Example:
 }
 ```
 
-**Document Structure:**
+### Document Structure
 ```python
 {
-  "id": "uuid",
-  "document": "Q: How do I track my order?\nA: Visit Orders > Track Order",
+  "id": "uuid4-string",
+  "document": "Q: How do I track my order?\nA: Once your order ships...",
   "metadata": {
-    "source": "faqs.csv",
-    "category": "shipping",
-    "timestamp": "2024-01-01T00:00:00Z"
+    "source": "/tmp/tmpXXXXXX.csv",
+    "category": "faq",
+    "timestamp": "2026-05-25T10:00:00.000000"
   },
-  "embedding": [0.1, 0.2, 0.3, ...]  # 384-dimensional vector
+  "embedding": [...]   # 384-dimensional float vector (all-MiniLM-L6-v2)
 }
 ```
 
+### Retrieval Parameters
+- `n_results`: 3 (top-3 most similar documents)
+- `MIN_SCORE`: 0.30 (minimum cosine similarity to include)
+- `RELEVANCE_THRESHOLD`: 0.25 (threshold for `is_relevant()` check)
+- Distance → score conversion: `score = 1 - (distance / 2)`
+
+---
+
 ## Data Relationships
 
-### Company ↔ Knowledge Base
-- One company has one ChromaDB collection
-- Collection name is derived from company slug
-- No foreign keys (separate databases)
+```
+companies (SQL)          ChromaDB
+─────────────────        ──────────────────────────
+id (UUID)                kb_{slug} collection
+name                       └── documents[]
+slug ──────────────────────────> metadata.company_slug
+email
+api_key_hash
+```
 
-## Migration Guide
+- No foreign keys between SQL and ChromaDB — linked by `company_slug` string
+- Deleting a company also deletes its ChromaDB collection (`reset_collection()`)
 
-### SQLite → PostgreSQL
-1. Set `DATABASE_URL` to PostgreSQL connection string
-2. Restart application (tables auto-created)
-3. Migrate existing data using tools like `pgloader`
+---
 
-### Example Migration with pgloader
+## Migration: SQLite → PostgreSQL
+
+1. Set `DATABASE_URL` to PostgreSQL connection string in `.env`
+2. Restart — SQLAlchemy auto-creates tables
+3. Migrate existing data:
+
 ```bash
+pip install pgloader
 pgloader sqlite:///customer_care_bot.db postgresql://user:pass@host/db
 ```

@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Customer Care Bot - Secure Integrated Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .status-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 10px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .status-dot.online {
+            background: #10b981;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-dot.offline {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding-right: 10px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            padding: 16px 20px;
+            border-radius: 14px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            color: white;
+            margin-left: 40px;
+        }
+
+        .bot-message {
+            background: #f8fafc;
+            color: #333;
+            margin-right: 40px;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 11px;
+            opacity: 0.75;
+        }
+
+        .message-content {
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        .message-meta {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0,0,0,0.08);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 11px;
+        }
+
+        .meta-tag {
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: #e2e8f0;
+            color: #475569;
+            font-weight: 500;
+        }
+
+        .meta-tag.confidence-high {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .meta-tag.confidence-medium {
+            background: #fef9c3;
+            color: #854d0e;
+        }
+
+        .meta-tag.confidence-low {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .meta-tag.escalated {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        .input-section {
+            display: flex;
+            gap: 12px;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 20px;
+        }
+
+        .input-section input {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 15px;
+        }
+
+        .input-section input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+
+        .input-section button {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .input-section button:hover {
+            transform: translateY(-2px);
+        }
+
+        .input-section button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .test-sidebar {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            height: 600px;
+            overflow-y: auto;
+        }
+
+        .test-sidebar h3 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .test-section {
+            margin-bottom: 20px;
+        }
+
+        .test-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 2px solid #e2e8f0;
+            background: #f8fafc;
+            border-radius: 10px;
+            font-size: 13px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .test-btn:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .test-btn.active {
+            border-color: #10b981;
+            background: #dcfce7;
+        }
+
+        .test-results {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .test-result {
+            font-size: 12px;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        .test-result.pass {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .test-result.fail {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 10px 20px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #3b82f6;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite both;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .footer {
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            font-size: 13px;
+            margin-top: 20px;
+        }
+
+        .security-notice {
+            margin-top: 15px;
+            padding: 15px;
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #78350f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>� AI Customer Care Bot - Secure Integrated Test</h1>
+            <p>Full integration test: HTML ↔ Backend (with secure API key storage)</p>
+            
+            <div class="status-section">
+                <div class="status-item">
+                    <span class="status-dot" id="backendStatus"></span>
+                    <span id="backendStatusText">Checking...</span>
+                </div>
+                <div class="status-item">
+                    <span>Company:</span>
+                    <strong style="color:#1f2937">demo-company</strong>
+                </div>
+                <div class="status-item">
+                    <span>Session:</span>
+                    <strong id="sessionIdText" style="color:#3b82f6;font-family:monospace">New</strong>
+                </div>
+            </div>
+
+            <div class="security-notice">
+                <strong>🔒 SECURE MODE:</strong> All API keys are stored only in the backend. No keys are exposed in this HTML file!
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="chat-container">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message bot-message">
+                        <div class="message-header">
+                            <span>🤖 Bot</span>
+                            <span id="time1"></span>
+                        </div>
+                        <div class="message-content">
+                            Hi! Welcome to the Secure AI Customer Care Bot! I'm connected to the secure backend server with protected API keys. Ask me anything, or use the test panel on the right!
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-section">
+                    <input 
+                        type="text" 
+                        id="userInput" 
+                        placeholder="Type your message here..."
+                        autocomplete="off"
+                    >
+                    <button type="button" id="sendBtn">Send</button>
+                </div>
+            </div>
+
+            <div class="test-sidebar">
+                <h3>🧪 Test Suite</h3>
+                
+                <div class="test-section">
+                    <p style="font-size:12px;color:#666;margin-bottom:10px;">Quick Test Messages:</p>
+                    <button class="test-btn" data-msg="Hello! How are you?">
+                        👋 Greeting test
+                    </button>
+                    <button class="test-btn" data-msg="How do I track my order?">
+                        📦 Order tracking test
+                    </button>
+                    <button class="test-btn" data-msg="This product is terrible! I'm so frustrated and angry!">
+                        😤 Angry customer test
+                    </button>
+                    <button class="test-btn" data-msg="Thank you so much! You've been very helpful!">
+                        😊 Positive feedback test
+                    </button>
+                    <button class="test-btn" data-msg="I need to speak to a human agent right now!">
+                        🚨 Escalation request test
+                    </button>
+                </div>
+
+                <div class="test-section">
+                    <p style="font-size:12px;color:#666;margin-bottom:10px;">System Tests:</p>
+                    <button class="test-btn" id="healthCheckBtn">
+                        🏥 Backend health check
+                    </button>
+                    <button class="test-btn" id="clearChatBtn">
+                        🗑️ Clear chat history
+                    </button>
+                </div>
+
+                <div class="test-results" id="testResults">
+                    <h4 style="font-size:14px;color:#333;margin-bottom:10px;">📊 Results & Latency</h4>
+                    <div class="test-result" id="latencyDisplay">
+                        No messages sent yet
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Secure end-to-end test • Backend API: http://localhost:8000 • API keys stored only on server</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        const COMPANY_SLUG = 'demo-company';
+        let currentSessionId = null;
+        let lastRequestTime = null;
+
+        // Initialize
+        document.getElementById('time1').textContent = new Date().toLocaleTimeString();
+        checkBackendHealth();
+
+        // Test buttons
+        document.querySelectorAll('.test-btn[data-msg]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('userInput').value = btn.dataset.msg;
+                sendMessage();
+            });
+        });
+
+        document.getElementById('healthCheckBtn').addEventListener('click', checkBackendHealth);
+        document.getElementById('clearChatBtn').addEventListener('click', clearChat);
+        document.getElementById('sendBtn').addEventListener('click', sendMessage);
+        
+        document.getElementById('userInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        async function checkBackendHealth() {
+            const statusDot = document.getElementById('backendStatus');
+            const statusText = document.getElementById('backendStatusText');
+            
+            try {
+                const response = await fetch(`${API_URL}/`);
+                const data = await response.json();
+                
+                if (data.status === 'running') {
+                    statusDot.className = 'status-dot online';
+                    statusText.textContent = 'Backend: Online (Secure)';
+                    addTestResult('✅ Backend health check passed', true);
+                }
+            } catch (error) {
+                statusDot.className = 'status-dot offline';
+                statusText.textContent = `Backend: Offline (${error.message})`;
+                addTestResult(`❌ Backend health check failed: ${error.message}`, false);
+            }
+        }
+
+        function clearChat() {
+            const chatContainer = document.getElementById('chatMessages');
+            chatContainer.innerHTML = `
+                <div class="message bot-message">
+                    <div class="message-header">
+                        <span>🤖 Bot</span>
+                        <span>${new Date().toLocaleTimeString()}</span>
+                    </div>
+                    <div class="message-content">
+                        Chat cleared! Let's start fresh.
+                    </div>
+                </div>
+            `;
+            currentSessionId = null;
+            document.getElementById('sessionIdText').textContent = 'New';
+            addTestResult('🗑️ Chat cleared', true);
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            input.value = '';
+            lastRequestTime = Date.now();
+            
+            addMessage(message, 'user');
+            showTypingIndicator();
+            
+            try {
+                const response = await fetch(`${API_URL}/api/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        message: message,
+                        company_slug: COMPANY_SLUG
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (currentSessionId === null) {
+                    currentSessionId = data.session_id;
+                    document.getElementById('sessionIdText').textContent = 
+                        data.session_id.substring(0, 12) + '...';
+                }
+                
+                const latency = Date.now() - lastRequestTime;
+                removeTypingIndicator();
+                
+                addMessage(data.response, 'bot', {
+                    confidence: data.confidence,
+                    is_escalated: data.is_escalated,
+                    latency: latency,
+                    sources: data.retrieved_sources
+                });
+                
+                addLatencyInfo(latency, data.confidence);
+                
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage(`Error: ${error.message}. Make sure the backend is running at ${API_URL}!`, 'bot');
+                addTestResult(`❌ Message failed: ${error.message}`, false);
+            }
+        }
+
+        function addMessage(content, sender, meta = {}) {
+            const chatContainer = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            
+            const header = document.createElement('div');
+            header.className = 'message-header';
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = sender === 'user' ? '👤 You' : '🤖 Bot';
+            const timeSpan = document.createElement('span');
+            timeSpan.textContent = new Date().toLocaleTimeString();
+            header.appendChild(nameSpan);
+            header.appendChild(timeSpan);
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            messageDiv.appendChild(header);
+            messageDiv.appendChild(contentDiv);
+            
+            if (sender === 'bot' && Object.keys(meta).length > 0) {
+                const metaDiv = document.createElement('div');
+                metaDiv.className = 'message-meta';
+                
+                if (meta.confidence !== undefined) {
+                    const confTag = document.createElement('span');
+                    confTag.className = 'meta-tag';
+                    if (meta.confidence >= 0.8) {
+                        confTag.className += ' confidence-high';
+                    } else if (meta.confidence >= 0.6) {
+                        confTag.className += ' confidence-medium';
+                    } else {
+                        confTag.className += ' confidence-low';
+                    }
+                    confTag.textContent = `Confidence: ${(meta.confidence * 100).toFixed(0)}%`;
+                    metaDiv.appendChild(confTag);
+                }
+                
+                if (meta.latency !== undefined) {
+                    const latencyTag = document.createElement('span');
+                    latencyTag.className = 'meta-tag';
+                    latencyTag.textContent = `Latency: ${meta.latency}ms`;
+                    metaDiv.appendChild(latencyTag);
+                }
+                
+                if (meta.is_escalated) {
+                    const escTag = document.createElement('span');
+                    escTag.className = 'meta-tag escalated';
+                    escTag.textContent = 'ESCALATED';
+                    metaDiv.appendChild(escTag);
+                }
+                
+                if (meta.sources && meta.sources.length > 0) {
+                    const srcTag = document.createElement('span');
+                    srcTag.className = 'meta-tag';
+                    srcTag.textContent = `Sources: ${meta.sources.length}`;
+                    metaDiv.appendChild(srcTag);
+                }
+                
+                messageDiv.appendChild(metaDiv);
+            }
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const chatContainer = document.getElementById('chatMessages');
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typingIndicator';
+            typingDiv.className = 'message bot-message';
+            typingDiv.innerHTML = `
+                <div class="message-header">
+                    <span>🤖 Bot</span>
+                </div>
+                <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            chatContainer.appendChild(typingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const typingDiv = document.getElementById('typingIndicator');
+            if (typingDiv) typingDiv.remove();
+        }
+
+        function addTestResult(message, passed) {
+            const resultsDiv = document.getElementById('testResults');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            resultDiv.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            resultsDiv.insertBefore(resultDiv, resultsDiv.firstChild.nextSibling);
+        }
+
+        function addLatencyInfo(latency, confidence) {
+            const display = document.getElementById('latencyDisplay');
+            const quality = latency < 1000 ? '🟢 Excellent' : 
+                          latency < 2000 ? '🟡 Good' : '🟠 Slow';
+            
+            display.innerHTML = `
+                <strong>Last Request:</strong><br>
+                • Latency: ${latency}ms (${quality})<br>
+                • Confidence: ${(confidence * 100).toFixed(0)}%
+            `;
+        }
+    </script>
+</body>
+</html>

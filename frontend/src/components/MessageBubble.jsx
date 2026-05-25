@@ -29,10 +29,16 @@ export default function MessageBubble({ message }) {
             }`}
         >
           {message.content}
+          {/* Blinking cursor while streaming */}
+          {message._streaming && (
+            <span className="inline-block w-0.5 h-4 bg-gray-500 ml-0.5 animate-pulse align-middle" />
+          )}
         </div>
 
-        {/* Timestamp */}
-        <span className="text-xs text-gray-400 mt-1 px-1">{time}</span>
+        {/* Timestamp — hide while streaming */}
+        {!message._streaming && (
+          <span className="text-xs text-gray-400 mt-1 px-1">{time}</span>
+        )}
       </div>
     </div>
   )

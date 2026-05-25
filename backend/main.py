@@ -22,15 +22,15 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
 
     if not settings.GEMINI_API_KEY:
-        print("⚠️  WARNING: GEMINI_API_KEY is not set. Chat will not work.")
+        print("WARNING: GEMINI_API_KEY is not set. Chat will not work.")
         logger.warning("GEMINI_API_KEY is missing from environment")
 
     # Initialize database
     init_db()
     create_tables()
-    print("✅ Database initialized and tables created")
+    print("Database initialized and tables created")
 
-    print("✅ Multi-Tenant Customer Care Bot API is ready")
+    print("Multi-Tenant Customer Care Bot API is ready")
     print(f"   Docs: http://localhost:{settings.PORT}/docs")
 
     yield

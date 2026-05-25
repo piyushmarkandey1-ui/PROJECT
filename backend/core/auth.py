@@ -1,3 +1,14 @@
+"""
+Authentication dependency for FastAPI endpoints.
+
+Usage:
+    @router.put("/companies/{slug}")
+    async def update(slug: str, company: Company = Depends(get_current_company)):
+        ...
+
+The X-API-Key header value is SHA-256 hashed and looked up in the companies table.
+Returns the matching Company schema or raises HTTP 401.
+"""
 import logging
 from typing import Optional
 

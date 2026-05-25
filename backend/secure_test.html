@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Customer Care Bot - 100% SECURE</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .header h1 { color: #333; font-size: 24px; margin-bottom: 8px; }
+        .security-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            background: #dcfce7;
+            color: #065f46;
+            font-weight: 700;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .status-section {
+            margin-top: 15px;
+            padding: 12px 15px;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 10px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .status-item { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .status-dot {
+            width: 10px; height: 10px; border-radius: 50%;
+        }
+        .status-dot.online { background: #10b981; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+        .status-dot.offline { background: #ef4444; }
+        .chat-container {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 520px;
+        }
+        .chat-messages {
+            flex: 1; overflow-y: auto; margin-bottom: 18px; padding-right: 10px;
+        }
+        .message {
+            margin-bottom: 18px; padding: 14px 17px; border-radius: 14px;
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+        .user-message {
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            color: white; margin-left: 35px;
+        }
+        .bot-message {
+            background: #f8fafc; color: #333; margin-right: 35px;
+        }
+        .message-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 6px; font-size: 11px; opacity: 0.75;
+        }
+        .message-content { font-size: 15px; line-height: 1.6; }
+        .message-meta {
+            margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.08);
+            display: flex; gap: 8px; flex-wrap: wrap; font-size: 11px;
+        }
+        .meta-tag {
+            padding: 3px 10px; border-radius: 20px; background: #e2e8f0; color: #475569; font-weight: 500;
+        }
+        .meta-tag.confidence-high { background: #dcfce7; color: #166534; }
+        .meta-tag.confidence-low { background: #fee2e2; color: #991b1b; }
+        .meta-tag.escalated { background: #fecaca; color: #991b1b; }
+        .input-section {
+            display: flex; gap: 12px; border-top: 1px solid #f1f5f9; padding-top: 18px;
+        }
+        .input-section input {
+            flex: 1; padding: 13px 17px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 15px;
+        }
+        .input-section input:focus { outline: none; border-color: #3b82f6; }
+        .input-section button {
+            padding: 13px 26px;
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer;
+        }
+        .typing-indicator { display: flex; gap:4px; padding:10px 20px; }
+        .typing-indicator span {
+            width: 8px; height: 8px; background: #3b82f6; border-radius: 50%;
+            animation: bounce 1.4s infinite both;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%,80%,100% { transform: scale(0); } 40% { transform: scale(1); } }
+        .footer {
+            text-align: center; color: rgba(255,255,255,0.85); font-size: 13px; margin-top: 20px;
+        }
+        .quick-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px; }
+        .quick-btn {
+            padding: 8px 14px; background: #f1f5f9; border:1px solid #e2e8f0;
+            border-radius: 10px; font-size: 13px; cursor: pointer;
+        }
+        .quick-btn:hover { background: #e2e8f0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 AI Customer Care Bot - 100% SECURE</h1>
+            <p>No exposed API keys — all communication through backend server only!</p>
+            <div class="security-badge">✅ API Keys Stored Only On Server</div>
+            <div class="status-section">
+                <div class="status-item">
+                    <span class="status-dot" id="backendStatus"></span>
+                    <span id="backendStatusText">Checking backend...</span>
+                </div>
+                <div class="status-item">
+                    <span>Company:</span>
+                    <strong style="color:#1f2937">demo-company</strong>
+                </div>
+                <div class="status-item">
+                    <span>Session:</span>
+                    <strong id="sessionIdText" style="color:#3b82f6;font-family:monospace">New</strong>
+                </div>
+            </div>
+        </div>
+        <div class="chat-container">
+            <div class="quick-buttons">
+                <button class="quick-btn" data-msg="Hello! How are you?">👋 Hello</button>
+                <button class="quick-btn" data-msg="How do I track my order?">📦 Track order</button>
+                <button class="quick-btn" data-msg="What's your return policy?">📄 Returns</button>
+                <button class="quick-btn" data-msg="How do I contact support?">📞 Support</button>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot-message">
+                    <div class="message-header">
+                        <span>🤖 Bot</span>
+                        <span id="time1"></span>
+                    </div>
+                    <div class="message-content">
+                        Hi! Welcome to the 100% SECURE AI Customer Care Bot! All API keys are stored on the backend server — NO keys exposed in this interface!
+                    </div>
+                </div>
+            </div>
+            <div class="input-section">
+                <input type="text" id="userInput" placeholder="Type your message here..." autocomplete="off">
+                <button type="button" id="sendBtn">Send</button>
+            </div>
+        </div>
+        <div class="footer">
+            <p>🔒 100% Secure: API keys only in backend • Backend at http://localhost:8000</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        const COMPANY_SLUG = 'demo-company';
+        let currentSessionId = null;
+
+        document.getElementById('time1').textContent = new Date().toLocaleTimeString();
+        checkBackendHealth();
+
+        document.querySelectorAll('.quick-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('userInput').value = btn.dataset.msg;
+                sendMessage();
+            });
+        });
+
+        document.getElementById('sendBtn').addEventListener('click', sendMessage);
+        document.getElementById('userInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+        async function checkBackendHealth() {
+            const statusDot = document.getElementById('backendStatus');
+            const statusText = document.getElementById('backendStatusText');
+            try {
+                const resp = await fetch(`${API_URL}/`);
+                const data = await resp.json();
+                if (data.status === 'running') {
+                    statusDot.className = 'status-dot online';
+                    statusText.textContent = 'Backend: Online (Secure)';
+                }
+            } catch (err) {
+                statusDot.className = 'status-dot offline';
+                statusText.textContent = `Backend: Offline (${err.message})`;
+            }
+        }
+
+        function addMessage(content, sender, meta = {}) {
+            const chatContainer = document.getElementById('chatMessages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${sender}-message`;
+
+            const header = document.createElement('div');
+            header.className = 'message-header';
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = sender === 'user' ? '👤 You' : '🤖 Bot';
+            const timeSpan = document.createElement('span');
+            timeSpan.textContent = new Date().toLocaleTimeString();
+            header.appendChild(nameSpan);
+            header.appendChild(timeSpan);
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+
+            msgDiv.appendChild(header);
+            msgDiv.appendChild(contentDiv);
+
+            if (sender === 'bot' && Object.keys(meta).length > 0) {
+                const metaDiv = document.createElement('div');
+                metaDiv.className = 'message-meta';
+
+                if (meta.confidence !== undefined) {
+                    const tag = document.createElement('span');
+                    tag.className = 'meta-tag';
+                    if (meta.confidence >= 0.8) tag.className += ' confidence-high';
+                    else if (meta.confidence < 0.6) tag.className += ' confidence-low';
+                    tag.textContent = `Confidence: ${(meta.confidence * 100).toFixed(0)}%`;
+                    metaDiv.appendChild(tag);
+                }
+
+                if (meta.is_escalated) {
+                    const tag = document.createElement('span');
+                    tag.className = 'meta-tag escalated';
+                    tag.textContent = 'ESCALATED';
+                    metaDiv.appendChild(tag);
+                }
+
+                if (meta.latency) {
+                    const tag = document.createElement('span');
+                    tag.className = 'meta-tag';
+                    tag.textContent = `Latency: ${meta.latency}ms`;
+                    metaDiv.appendChild(tag);
+                }
+
+                msgDiv.appendChild(metaDiv);
+            }
+
+            chatContainer.appendChild(msgDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const chatContainer = document.getElementById('chatMessages');
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typingIndicator';
+            typingDiv.className = 'message bot-message';
+            typingDiv.innerHTML = `
+                <div class="message-header">
+                    <span>🤖 Bot</span>
+                </div>
+                <div class="typing-indicator">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+            chatContainer.appendChild(typingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const t = document.getElementById('typingIndicator');
+            if (t) t.remove();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const msg = input.value.trim();
+            if (!msg) return;
+            input.value = '';
+            const startTime = Date.now();
+            addMessage(msg, 'user');
+            showTypingIndicator();
+
+            try {
+                const resp = await fetch(`${API_URL}/api/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: currentSessionId,
+                        message: msg,
+                        company_slug: COMPANY_SLUG
+                    })
+                });
+
+                const data = await resp.json();
+
+                if (currentSessionId === null) {
+                    currentSessionId = data.session_id;
+                    document.getElementById('sessionIdText').textContent = 
+                        data.session_id.substring(0, 12) + '...';
+                }
+
+                const latency = Date.now() - startTime;
+                removeTypingIndicator();
+                addMessage(data.response, 'bot', {
+                    confidence: data.confidence,
+                    is_escalated: data.is_escalated,
+                    latency: latency
+                });
+
+            } catch (err) {
+                removeTypingIndicator();
+                addMessage(
+                    `Error: ${err.message}. Make sure backend is running at http://localhost:8000!`,
+                    'bot'
+                );
+            }
+        }
+    </script>
+</body>
+</html>

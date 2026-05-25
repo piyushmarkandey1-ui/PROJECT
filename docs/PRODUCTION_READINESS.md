@@ -1,313 +1,164 @@
 # Production Readiness Assessment
 
-## Executive Summary
-
-This document assesses the Multi-Tenant AI Customer Care Bot for production deployment. The system has been thoroughly evaluated and meets all technical specifications, security requirements, and performance benchmarks.
-
-**Status:** ✅ READY FOR PRODUCTION DEPLOYMENT
+**Status:** ✅ READY FOR PRODUCTION DEPLOYMENT  
+**Last Updated:** 2026-05-25
 
 ---
 
-## Table of Contents
+## Summary
 
-1. [Technical Specifications Compliance](#1-technical-specifications-compliance)
-2. [Security Assessment](#2-security-assessment)
-3. [Performance Testing Results](#3-performance-testing-results)
-4. [Scalability Architecture](#4-scalability-architecture)
-5. [Cost Optimization](#5-cost-optimization)
-6. [Reliability & Uptime](#6-reliability--uptime)
-7. [Testing Artifacts](#7-testing-artifacts)
-8. [Deployment Plan](#8-deployment-plan)
-9. [Rollback Procedures](#9-rollback-procedures)
-10. [Conclusion](#10-conclusion)
+| Area | Status | Notes |
+|------|--------|-------|
+| Multi-tenancy | ✅ | Company-isolated sessions, KB, API keys |
+| Auto API key generation | ✅ | 32-char secure random, SHA-256 hashed |
+| LLM integration | ✅ | LangChain v4 + Gemini, streaming SSE |
+| Model fallback chain | ✅ | 5 models, auto-switches on 429 |
+| RAG system | ✅ | ChromaDB cosine similarity, per-company |
+| Streaming responses | ✅ | SSE `/api/chat/stream` endpoint |
+| Escalation engine | ✅ | Sentiment + urgency + intensity |
+| PII guardrails | ✅ | CC, SSN, password redaction |
+| Security | ✅ | Hashed keys, session isolation, parameterized queries |
+| Documentation | ✅ | All docs updated to reflect current code |
 
 ---
 
-## 1. Technical Specifications Compliance
+## 1. Technical Specifications
 
-### ✅ Multi-Tenant Isolation
-- **Company-aware session management**: All sessions strictly tied to company identifiers
-- **Data separation**: Each company has its own ChromaDB collection
-- **SQL isolation**: Parameterized queries prevent SQL injection
-- **Session isolation**: Cross-company session access is denied
-- **Verification**: Tested with `test_session_isolation.py`
+### Multi-Tenant Isolation
+- Each company has its own ChromaDB collection (`kb_{slug}`)
+- Sessions keyed by `(company_slug, session_id)` — cross-company access denied
+- API key lookup via SHA-256 hash — no plaintext stored
+- Company can only modify its own profile (ownership check on PUT/DELETE)
 
-### ✅ RAG System
-- **Company-specific knowledge bases**: Each company's data stored in isolated collections
-- **Semantic search**: ChromaDB with cosine similarity
-- **Embedding consistency**: Same model for storage and retrieval
+### LLM Architecture
+- **Framework**: `langchain-google-genai==2.0.0` with `ChatGoogleGenerativeAI`
+- **Streaming**: `streaming=True` + `astream()` → SSE to frontend
+- **Chunk parsing**: `_extract_chunk_text()` handles both `str` and `list[dict]` formats
+- **Fallback chain**: 5 models tried in order on 429 quota errors
 
-### ✅ API Specifications
-- **RESTful API**: Fully documented at `/docs`
-- **OpenAPI/Swagger**: Auto-generated documentation
-- **Versioning**: API version 2.0.0
+### RAG System
+- ChromaDB with `hnsw:space=cosine` similarity
+- Embeddings: `all-MiniLM-L6-v2` (384-dim, built into ChromaDB)
+- Top-3 documents retrieved per query
+- Minimum score threshold: 0.30
 
 ---
 
 ## 2. Security Assessment
 
-### ✅ Authentication
-- **API key hashing**: SHA-256 hashing for all API keys
-- **Secure key storage**: Never stored in plain text
-- **Header-based auth**: `X-API-Key` header
+### ✅ API Key Security
+- Generated with `secrets.choice()` — cryptographically secure
+- SHA-256 hashed before storage — plaintext never persisted
+- Returned once at creation — never shown again
 
-### ✅ Authorization
-- **Company ownership checks**: Companies can only modify their own data
-- **Endpoint protection**: Protected endpoints require valid API keys
-- **Granular access**: Session operations require correct company slug
+### ✅ Input Validation
+- Pydantic v2 validates all request bodies
+- Slug sanitized: alphanumeric + hyphens only, max 50 chars
+- Email validated via `EmailStr`
 
-### ✅ Data Encryption
-- **At rest**:
-  - SQLite: File system permissions (chmod 600)
-  - PostgreSQL: Transparent Data Encryption (TDE) supported
-  - ChromaDB: File system permissions
-- **In transit**: TLS/SSL required for all communications
+### ✅ PII Protection
+- Credit card patterns → `[REDACTED-CC]`
+- SSN patterns → `[REDACTED-SSN]`
+- Password patterns → `password: [REDACTED]`
 
-### ✅ Compliance Readiness
-- **GDPR**: Data isolation supports data subject rights
-- **SOC 2**: Access controls and audit logging in place
-- **HIPAA**: Can be extended with additional controls
+### ✅ SQL Injection Prevention
+- All queries via SQLAlchemy ORM (parameterized)
+- No raw SQL string interpolation
 
----
-
-## 3. Performance Testing Results
-
-### Baseline Performance
-| Metric | Result | Target | Status |
-|--------|--------|--------|--------|
-| Average latency (single user) | < 500ms | < 1000ms | ✅ PASS |
-| P95 latency | < 800ms | < 1500ms | ✅ PASS |
-| Throughput (10 users) | 15 req/s | 10 req/s | ✅ PASS |
-| Success rate | 100% | 99% | ✅ PASS |
-
-### Load Testing Results
-| Concurrent Users | Throughput | Success Rate | Avg Latency | Status |
-|-----------------|------------|--------------|-------------|--------|
-| 10 | 15 req/s | 100% | 450ms | ✅ PASS |
-| 25 | 32 req/s | 99.8% | 680ms | ✅ PASS |
-| 50 | 58 req/s | 99.5% | 850ms | ✅ PASS |
-| 100 | 105 req/s | 99.2% | 950ms | ✅ PASS |
-
-**Test Script**: `backend/load_test.py`
+### ⚠️ Production Hardening Required
+- Change `SECRET_KEY` from `changeme` to a long random string
+- Restrict CORS `allow_origins` from `["*"]` to your frontend domain
+- Use PostgreSQL instead of SQLite for multi-worker deployments
+- Enable HTTPS (Railway and Vercel handle this automatically)
 
 ---
 
-## 4. Scalability Architecture
+## 3. Performance
 
-### Horizontal Scalability Design
+### Streaming Latency
+With SSE streaming, users see the **first token in ~1-2 seconds** rather than waiting for the full response. This dramatically improves perceived performance.
+
+### Model Response Times (approximate)
+| Model | First token | Full response |
+|-------|-------------|---------------|
+| gemini-3.5-flash | ~1s | ~3-5s |
+| gemini-2.0-flash-lite | ~0.8s | ~2-4s |
+
+### Throughput Limits (Free Tier)
+| Model | RPM | RPD |
+|-------|-----|-----|
+| gemini-3.5-flash | 15 | ~1500 |
+| gemini-2.0-flash-lite | 30 | 1500 |
+
+For production with higher traffic, add billing to Google AI Studio for 150-300 RPM.
+
+---
+
+## 4. Known Limitations
+
+| Limitation | Impact | Mitigation |
+|-----------|--------|-----------|
+| In-memory sessions | Lost on restart | Use Redis for persistence |
+| SQLite single-writer | Can't scale horizontally | Use PostgreSQL in production |
+| Free tier quota | 1500 RPD across all models | Add billing for unlimited |
+| ChromaDB telemetry errors | Cosmetic log noise | No functional impact |
+| No rate limiting middleware | Potential abuse | Add `slowapi` for production |
+
+---
+
+## 5. Deployment Checklist
+
+### Pre-Deployment
+- [ ] `GEMINI_API_KEY` and `GOOGLE_API_KEY` set to same valid key
+- [ ] `SECRET_KEY` changed from `changeme`
+- [ ] `DATABASE_URL` set to PostgreSQL connection string
+- [ ] CORS `allow_origins` restricted to frontend domain
+- [ ] `LLM_MODEL=gemini-3.5-flash` confirmed
+- [ ] `LLM_FALLBACK_MODELS` configured with all 4 fallbacks
+
+### Backend (Railway)
+```bash
+railway variables set GEMINI_API_KEY=your-key
+railway variables set GOOGLE_API_KEY=your-key
+railway variables set LLM_MODEL=gemini-3.5-flash
+railway variables set LLM_FALLBACK_MODELS=gemini-3.1-flash-lite,gemini-3-flash-preview,gemini-2.0-flash,gemini-2.0-flash-lite
+railway variables set DATABASE_URL=postgresql://...
+railway variables set SECRET_KEY=your-long-random-secret
+railway up
 ```
-                    ┌─────────────┐
-                    │   Load      │
-                    │  Balancer   │
-                    └──────┬──────┘
-                           │
-        ┌──────────────────┼──────────────────┐
-        │                  │                  │
-   ┌────▼────┐       ┌────▼────┐       ┌────▼────┐
-   │ Backend │       │ Backend │       │ Backend │
-   │  Node 1 │       │  Node 2 │       │  Node N │
-   └────┬────┘       └────┬────┘       └────┬────┘
-        │                  │                  │
-        └──────────────────┼──────────────────┘
-                           │
-        ┌──────────────────┼──────────────────┐
-        │                  │                  │
-   ┌────▼────┐       ┌────▼────┐       ┌────▼────┐
-   │PostgreSQL│       │ ChromaDB│       │  Redis  │
-   │  (Primary)│       │ Cluster │       │  Cache  │
-   └─────────┘       └─────────┘       └─────────┘
+
+### Frontend (Vercel)
+```bash
+cd frontend
+npm run build
+vercel --prod
+# Set VITE_API_URL=https://your-backend.railway.app in Vercel dashboard
 ```
 
-### Key Scalability Features
-- **Stateless backend**: No sticky sessions required
-- **Shared database**: PostgreSQL for company data
-- **Distributed vector DB**: ChromaDB can be clustered
-- **Caching layer**: Redis for session and embedding caching
-- **Linear scaling**: Performance improves linearly with additional nodes
+### Post-Deployment Validation
+```bash
+# Health check
+curl https://your-backend.railway.app/api/health
 
-### Auto-Scaling Recommendations
-- **CPU-based scaling**: Scale out when CPU > 70%
-- **Queue-based scaling**: Scale based on pending requests
-- **Schedule-based scaling**: Pre-scale for known peak times
+# Create demo company
+curl -X POST https://your-backend.railway.app/api/demo-company
 
----
-
-## 5. Cost Optimization
-
-### Right-Sized Infrastructure
-| Component | Development | Staging | Production |
-|-----------|-------------|---------|------------|
-| Backend | 1x Small | 2x Medium | 2-4x Medium (auto-scaling) |
-| Database | SQLite | 1x Small PostgreSQL | 1x Medium PostgreSQL |
-| ChromaDB | File-based | 1x Small | 2x Medium (cluster) |
-
-### Cost-Saving Measures
-1. **Spot instances**: Use spot instances for non-critical workloads
-2. **Auto-scaling down**: Scale down during off-peak hours
-3. **Caching**: Reduce LLM API calls with response caching
-4. **Right-sizing**: Monitor and adjust resources monthly
-5. **Database optimization**: Indexing, connection pooling, query optimization
-
-### Estimated Monthly Costs (Production)
-| Component | Cost (USD) |
-|-----------|-------------|
-| Backend (2x Medium) | $80 |
-| PostgreSQL (Medium) | $50 |
-| ChromaDB (2x Medium) | $60 |
-| Gemini API | $20-100 (usage-based) |
-| Load Balancer | $20 |
-| **Total** | **$230-310** |
+# Test chat
+curl -X POST https://your-backend.railway.app/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message":"Hello","company_slug":"demo-corp"}'
+```
 
 ---
 
-## 6. Reliability & Uptime
+## 6. Rollback Procedure
 
-### Uptime Target: 99.99%
-- **Availability**: 99.99% uptime (52 minutes downtime/year)
-- **RTO (Recovery Time Objective)**: 1 hour
-- **RPO (Recovery Point Objective)**: 1 hour
-
-### High Availability Features
-- **Multi-AZ deployment**: Deploy across multiple availability zones
-- **Database replication**: PostgreSQL streaming replication
-- **Automated failover**: Automatic promotion of standby database
-- **Health checks**: Load balancer health checks every 30 seconds
-- **Graceful degradation**: Service continues with reduced functionality
-
-### Backup & Recovery
-- **Full backups**: Daily at 2 AM
-- **Incremental backups**: Hourly
-- **Point-in-time recovery**: Supported with WAL archiving
-- **Backup retention**: 30 days for full backups, 7 days for incremental
-- **Off-site backups**: Cloud storage (S3/GCS)
+1. In Railway dashboard → Deployments → select previous deployment → Redeploy
+2. In Vercel dashboard → Deployments → select previous deployment → Promote to Production
+3. Verify health check passes
+4. Monitor logs for 15 minutes
 
 ---
 
-## 7. Testing Artifacts
-
-### Test Dataset
-- **Location**: `backend/data/`
-- **Files**:
-  - `acme_corp_faqs.csv` - 21 FAQs for Acme Corp
-  - `techsolutions_faqs.csv` - 20 FAQs for Tech Solutions
-  - `sample_faqs.csv` - Original sample FAQs
-
-### Automated Tests
-1. **Session Isolation Test**: `backend/test_session_isolation.py`
-   - Tests cross-company data isolation
-   - Tests multiple sessions per company
-   - Tests session cleanup
-   
-2. **Load Testing**: `backend/load_test.py`
-   - Simulates concurrent users across companies
-   - Measures throughput and latency
-   - Tests system under load
-
-### Test Environments
-| Environment | Purpose | Configuration |
-|-------------|---------|----------------|
-| Local | Development | SQLite, single node |
-| Staging | Pre-production | PostgreSQL, 2 nodes |
-| Production | Live | PostgreSQL HA, auto-scaling |
-
----
-
-## 8. Deployment Plan
-
-### Pre-Deployment Checklist
-- [ ] All tests pass (`test_session_isolation.py`)
-- [ ] Load testing completed successfully
-- [ ] Security audit completed
-- [ ] Database backups configured
-- [ ] Monitoring & alerting set up
-- [ ] Rollback plan documented
-- [ ] Team trained on deployment procedures
-
-### Deployment Steps (Railway + Vercel)
-
-#### Phase 1: Database Setup
-1. Provision PostgreSQL database
-2. Run database migrations
-3. Configure backups
-4. Verify connectivity
-
-#### Phase 2: Backend Deployment
-1. Set environment variables in Railway
-2. Deploy backend to Railway
-3. Verify health endpoint
-4. Run smoke tests
-
-#### Phase 3: Frontend Deployment
-1. Set `VITE_API_URL` in Vercel
-2. Deploy frontend to Vercel
-3. Verify frontend loads correctly
-4. Test end-to-end flow
-
-#### Phase 4: Validation
-1. Create test companies
-2. Upload test knowledge bases
-3. Verify chat functionality
-4. Validate session isolation
-5. Run load test
-
-#### Phase 5: Go-Live
-1. Update DNS records
-2. Enable production traffic
-3. Monitor for 2 hours
-4. Conduct final validation
-
-### Go/No-Go Decision Points
-- After Phase 2: Decision to proceed with frontend
-- After Phase 4: Decision to enable production traffic
-- 1 hour post-go-live: Decision to continue or rollback
-
----
-
-## 9. Rollback Procedures
-
-### Trigger Conditions for Rollback
-- Critical bugs affecting core functionality
-- Performance degradation > 50%
-- Security incidents
-- Data integrity issues
-- Customer impact > 10%
-
-### Rollback Steps
-1. **Stop traffic**: Disable production traffic at load balancer
-2. **Database rollback**: Restore from latest good backup
-3. **Backend rollback**: Deploy previous version
-4. **Frontend rollback**: Deploy previous version
-5. **Validation**: Run full test suite
-6. **Restore traffic**: Gradually enable production traffic
-7. **Monitor**: Observe for 1 hour post-rollback
-
-### Communication Plan
-- **Internal**: Notify engineering, support, and management teams
-- **Customers**: Post status page update, send email notifications if needed
-- **Stakeholders**: Provide hourly updates during rollback
-
----
-
-## 10. Conclusion
-
-### Final Assessment
-The Multi-Tenant AI Customer Care Bot has successfully passed all production readiness criteria:
-
-✅ **Technical Specifications**: Fully compliant with all requirements  
-✅ **Security**: Meets industry-standard security requirements  
-✅ **Performance**: Exceeds performance and scalability targets  
-✅ **Reliability**: Architecture supports 99.99% uptime  
-✅ **Testing**: Comprehensive test suite and artifacts provided  
-✅ **Documentation**: Complete deployment and operations documentation  
-
-### Recommendation
-**APPROVED FOR PRODUCTION DEPLOYMENT**
-
-The system is ready to be deployed to production following the deployment plan outlined in this document.
-
----
-
-**Document Version**: 1.0  
-**Last Updated**: 2026-05-24  
-**Prepared By**: Engineering Team  
-**Approved By**: [To be filled]
+**Document Version**: 2.0  
+**Last Updated**: 2026-05-25

@@ -1,254 +1,102 @@
 # Backup & Recovery
 
-## Backup Strategy
+## What to Back Up
 
-### Recommended Backup Schedule
+| Data | Location | Criticality |
+|------|----------|-------------|
+| Company profiles + API key hashes | `customer_care_bot.db` | **Critical** |
+| Knowledge base embeddings | `chromadb_store/` | High (re-uploadable from CSVs) |
+| FAQ CSV source files | `backend/data/*.csv` | Medium (source of truth for KB) |
 
-| Type | Frequency | Retention |
-|------|-----------|-----------|
-| Full Backup | Daily | 30 days |
-| Incremental | Hourly | 7 days |
-| Transaction Log | Continuous | 24 hours |
+---
 
-## SQLite Backup & Recovery
+## SQLite Backup
 
-### Backup
+### Manual
 ```bash
-#!/bin/bash
+cp customer_care_bot.db customer_care_bot.backup.$(date +%Y%m%d).db
+```
+
+### Automated (cron)
+```bash
 # backup_sqlite.sh
-
-BACKUP_DIR="/path/to/backups"
-DATE=$(date +%Y%m%d_%H%M%S)
-DB_FILE="customer_care_bot.db"
-
+BACKUP_DIR="./backups"
 mkdir -p $BACKUP_DIR
-cp $DB_FILE $BACKUP_DIR/customer_care_bot_$DATE.db
-
-# Keep last 30 backups
+cp customer_care_bot.db $BACKUP_DIR/customer_care_bot_$(date +%Y%m%d_%H%M%S).db
+# Keep last 30 days
 find $BACKUP_DIR -name "customer_care_bot_*.db" -mtime +30 -delete
 ```
 
-### Schedule with cron
 ```bash
-# Edit crontab
-crontab -e
-
-# Add daily backup at 2 AM
+# Add to crontab — daily at 2 AM
 0 2 * * * /path/to/backup_sqlite.sh
 ```
 
-### Recovery
+### Restore
 ```bash
-# Stop application first
-systemctl stop customer-care-bot
-
-# Restore from backup
-cp /path/to/backups/customer_care_bot_20240101_020000.db customer_care_bot.db
-
-# Start application
-systemctl start customer-care-bot
+# Stop server first
+cp backups/customer_care_bot_20260525_020000.db customer_care_bot.db
+# Restart server
 ```
 
-## PostgreSQL Backup & Recovery
+---
 
-### Full Backup (pg_dump)
-```bash
-#!/bin/bash
-# backup_postgres.sh
-
-BACKUP_DIR="/path/to/backups"
-DATE=$(date +%Y%m%d_%H%M%S)
-DB_NAME="customer_care_bot"
-DB_USER="cc_bot_user"
-
-mkdir -p $BACKUP_DIR
-pg_dump -U $DB_USER $DB_NAME | gzip > $BACKUP_DIR/${DB_NAME}_$DATE.sql.gz
-
-# Keep last 30 backups
-find $BACKUP_DIR -name "${DB_NAME}_*.sql.gz" -mtime +30 -delete
-```
-
-### Continuous Archiving (WAL)
-```sql
--- postgresql.conf
-wal_level = replica
-archive_mode = on
-archive_command = 'cp %p /path/to/wal_archive/%f'
-```
-
-### Recovery
-```bash
-# Stop PostgreSQL
-systemctl stop postgresql
-
-# Restore base backup
-gunzip -c /path/to/backups/customer_care_bot_20240101_020000.sql.gz | psql -U cc_bot_user customer_care_bot
-
-# Start PostgreSQL
-systemctl start postgresql
-```
-
-## ChromaDB Backup & Recovery
+## PostgreSQL Backup
 
 ### Backup
 ```bash
-#!/bin/bash
-# backup_chroma.sh
-
-BACKUP_DIR="/path/to/backups"
-DATE=$(date +%Y%m%d_%H%M%S)
-CHROMA_DIR="./chromadb_store"
-
-mkdir -p $BACKUP_DIR
-tar -czf $BACKUP_DIR/chromadb_$DATE.tar.gz $CHROMA_DIR
-
-# Keep last 30 backups
-find $BACKUP_DIR -name "chromadb_*.tar.gz" -mtime +30 -delete
+pg_dump -U username -h hostname database_name | gzip > backup_$(date +%Y%m%d).sql.gz
 ```
 
-### Recovery
+### Restore
 ```bash
-# Stop application first
-systemctl stop customer-care-bot
+gunzip -c backup_20260525.sql.gz | psql -U username -h hostname database_name
+```
 
-# Remove existing chromadb store
+---
+
+## ChromaDB Backup
+
+ChromaDB stores data as binary files in `chromadb_store/`. Back up the entire directory.
+
+### Backup
+```bash
+tar -czf chromadb_backup_$(date +%Y%m%d).tar.gz ./chromadb_store
+```
+
+### Restore
+```bash
 rm -rf ./chromadb_store
-
-# Restore from backup
-tar -xzf /path/to/backups/chromadb_20240101_020000.tar.gz
-
-# Start application
-systemctl start customer-care-bot
+tar -xzf chromadb_backup_20260525.tar.gz
+# Restart server
 ```
 
-## Combined Backup Script
-
+### Alternative: Re-upload from CSVs
+If you have the original CSV files, you can rebuild the knowledge base:
 ```bash
-#!/bin/bash
-# full_backup.sh
-
-BACKUP_DIR="/path/to/backups"
-DATE=$(date +%Y%m%d_%H%M%S)
-LOG_FILE="$BACKUP_DIR/backup_$DATE.log"
-
-exec > >(tee -a $LOG_FILE)
-exec 2>&1
-
-echo "Starting backup at $(date)"
-
-# Backup SQLite/PostgreSQL
-echo "Backing up SQL database..."
-/path/to/backup_sqlite.sh
-
-# Backup ChromaDB
-echo "Backing up ChromaDB..."
-/path/to/backup_chroma.sh
-
-echo "Backup completed at $(date)"
+# For each company
+curl -X POST http://localhost:8000/api/knowledge/upload-csv \
+  -H "X-API-Key: <company-api-key>" \
+  -F "file=@backend/data/sample_faqs.csv"
 ```
 
-## Cloud Backup
+---
 
-### AWS S3
+## Recovery Procedure
+
+1. **Stop the server**
+2. **Restore SQL database** (company profiles + API keys)
+3. **Restore ChromaDB** (or re-upload CSVs)
+4. **Start the server**
+5. **Verify** with health check: `curl http://localhost:8000/api/health`
+
+---
+
+## Railway Production Backup
+
+Railway provides automatic PostgreSQL backups on paid plans. For manual backup:
 ```bash
-# Install AWS CLI
-pip install awscli
-
-# Configure
-aws configure
-
-# Upload backup
-aws s3 cp /path/to/backups/customer_care_bot_20240101_020000.db s3://your-bucket/backups/
+railway run pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
 ```
 
-### Google Cloud Storage
-```bash
-# Install gcloud CLI
-# https://cloud.google.com/sdk/docs/install
-
-# Authenticate
-gcloud auth login
-
-# Upload backup
-gsutil cp /path/to/backups/customer_care_bot_20240101_020000.db gs://your-bucket/backups/
-```
-
-## Disaster Recovery
-
-### RTO & RPO Targets
-- **Recovery Time Objective (RTO):** 1 hour
-- **Recovery Point Objective (RPO):** 1 hour
-
-### Recovery Steps
-
-1. **Assess Damage**
-   - Identify what data is lost
-   - Determine cause of failure
-
-2. **Restore Infrastructure**
-   - Provision new servers if needed
-   - Install dependencies
-   - Configure environment
-
-3. **Restore Databases**
-   - Restore SQL database from latest backup
-   - Restore ChromaDB from latest backup
-   - Verify data integrity
-
-4. **Test Application**
-   - Start application
-   - Run smoke tests
-   - Verify functionality
-
-5. **Switch Over**
-   - Update DNS/load balancer
-   - Monitor application
-   - Verify user access
-
-## Backup Verification
-
-### Regular Verification
-```bash
-#!/bin/bash
-# verify_backup.sh
-
-BACKUP_FILE="/path/to/backups/customer_care_bot_latest.db"
-TEST_DIR="/tmp/backup_test"
-
-mkdir -p $TEST_DIR
-cp $BACKUP_FILE $TEST_DIR/test.db
-
-# Test SQLite
-sqlite3 $TEST_DIR/test.db "SELECT COUNT(*) FROM companies;"
-
-# Cleanup
-rm -rf $TEST_DIR
-
-echo "Backup verification complete"
-```
-
-### Automated Verification
-Add to cron:
-```bash
-0 4 * * * /path/to/verify_backup.sh
-```
-
-## Backup Encryption
-
-### Encrypt Backup
-```bash
-# Encrypt with GPG
-gpg --encrypt --recipient your-email@example.com customer_care_bot.db
-
-# Encrypt with OpenSSL
-openssl enc -aes-256-cbc -salt -in customer_care_bot.db -out customer_care_bot.db.enc
-```
-
-### Decrypt Backup
-```bash
-# Decrypt with GPG
-gpg --decrypt customer_care_bot.db.gpg > customer_care_bot.db
-
-# Decrypt with OpenSSL
-openssl enc -d -aes-256-cbc -in customer_care_bot.db.enc -out customer_care_bot.db
-```
+For ChromaDB on Railway, use a persistent volume and back it up via the Railway dashboard or CLI.

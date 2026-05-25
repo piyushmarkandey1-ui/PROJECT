@@ -1,13 +1,19 @@
 # Database Security
 
-## Authentication & Authorization
+## API Key Security
 
-### API Key Authentication
-- API keys are never stored in plain text
-- SHA-256 hashing used for API key storage
-- Hash comparison uses constant-time comparison to prevent timing attacks
+### Generation
+API keys are generated using Python's `secrets` module — cryptographically secure random:
+```python
+import secrets, string
 
-**Hashing Implementation:**
+def _generate_api_key(length: int = 32) -> str:
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+```
+
+### Storage
+Only the SHA-256 hash is stored — the plaintext key is **never persisted**:
 ```python
 import hashlib
 
@@ -15,112 +21,98 @@ def _hash_api_key(api_key: str) -> str:
     return hashlib.sha256(api_key.encode("utf-8")).hexdigest()
 ```
 
-### Company Isolation
-- Each company has its own ChromaDB collection
-- SQL queries are parameterized to prevent SQL injection
-- API endpoints validate company ownership before modifications
-
-## Data Encryption
-
-### At Rest
-- SQLite: File system permissions (chmod 600)
-- PostgreSQL: Transparent Data Encryption (TDE)
-- ChromaDB: File system permissions
-
-### In Transit
-- TLS/SSL for all API communications
-- HTTPS required in production
-- HSTS headers for production deployments
-
-## Access Controls
-
-### Database User Permissions (PostgreSQL)
-```sql
--- Create restricted user
-CREATE USER cc_bot_user WITH PASSWORD 'strong-password';
-
--- Grant minimal permissions
-GRANT CONNECT ON DATABASE customer_care_bot TO cc_bot_user;
-GRANT USAGE ON SCHEMA public TO cc_bot_user;
-GRANT SELECT, INSERT, UPDATE, DELETE ON companies TO cc_bot_user;
+### Lookup
+```python
+def get_company_by_api_key(api_key: str) -> Optional[CompanySchema]:
+    api_key_hash = _hash_api_key(api_key)
+    # Query by hash — constant-time comparison via DB index
+    company = session.query(Company).filter(Company.api_key_hash == api_key_hash).first()
 ```
 
-### File System Permissions
-```bash
-# SQLite database
-chmod 600 customer_care_bot.db
+---
 
-# ChromaDB storage
-chmod 700 chromadb_store
-chmod 600 chromadb_store/*
-```
+## Company Isolation
 
-## Secrets Management
+- Each company's ChromaDB collection is named `kb_{slug}` — no cross-company access
+- Sessions are keyed by `(company_slug, session_id)` — company A cannot read company B's sessions
+- API key authentication enforces company ownership on all write operations:
+  - `PUT /api/companies/{slug}` — only the company's own key can update
+  - `DELETE /api/companies/{slug}` — only the company's own key can delete
+  - `POST /api/knowledge/upload-csv` — only the company's own key can upload
 
-### Environment Variables
-Never commit secrets to version control:
-```env
-# .env (never committed)
-GEMINI_API_KEY=your-key
-DATABASE_URL=postgresql://user:pass@host/db
-SECRET_KEY=your-secret
-```
-
-### Production Secrets Management
-- Use Railway Variables (Railway)
-- Use Vercel Environment Variables (Vercel)
-- Use AWS Secrets Manager / HashiCorp Vault for enterprise
+---
 
 ## SQL Injection Prevention
 
-### Parameterized Queries
-Always use SQLAlchemy's parameterized queries:
+All queries use SQLAlchemy ORM with parameterized statements:
 ```python
-# Good
+# Safe — parameterized
 company = session.query(Company).filter(Company.slug == slug).first()
 
-# Bad (never do this)
-company = session.execute(f"SELECT * FROM companies WHERE slug = '{slug}'")
+# Never do this
+session.execute(f"SELECT * FROM companies WHERE slug = '{slug}'")
 ```
 
-## Input Validation
+---
 
-### Company Slug Validation
-- Regex: `^[a-z0-9-]+$`
-- Length: 2-50 characters
-- No spaces or special characters
+## PII Sanitization
 
-### API Key Validation
-- Minimum 32 characters
-- Secure random generation
-- No predictable patterns
+The `GuardrailsEngine` automatically redacts PII from LLM responses:
 
-## Audit Logging
+| Pattern | Replacement |
+|---------|-------------|
+| Credit card numbers (13-16 digits) | `[REDACTED-CC]` |
+| SSNs (`XXX-XX-XXXX`) | `[REDACTED-SSN]` |
+| Passwords (`password: value`) | `password: [REDACTED]` |
 
-### Logged Events
-- Company creation
-- Company updates
-- Company deletion
-- Knowledge base uploads
-- API authentication attempts
-
-### Log Format
-```json
-{
-  "timestamp": "2024-01-01T00:00:00Z",
-  "event": "company_created",
-  "company_slug": "acme-corp",
-  "ip_address": "192.168.1.1",
-  "user_agent": "Mozilla/5.0..."
-}
+```python
+_CC_PATTERN       = re.compile(r"\b(?:\d[ -]?){13,16}\b")
+_SSN_PATTERN      = re.compile(r"\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b")
+_PASSWORD_PATTERN = re.compile(r"(?i)(password\s*[:=]\s*\S+)")
 ```
 
-## Security Best Practices
+---
 
-1. **Rotate API Keys** - Regularly rotate company API keys
-2. **Monitor Access** - Log and monitor all API access
-3. **Rate Limiting** - Implement rate limiting to prevent abuse
-4. **Regular Audits** - Perform security audits quarterly
-5. **Backup Encryption** - Encrypt all backups
-6. **Least Privilege** - Apply principle of least privilege
-7. **Keep Dependencies Updated** - Regularly update dependencies for security patches
+## Secrets Management
+
+### Development
+```env
+# .env — never commit to git
+GEMINI_API_KEY=your-key
+GOOGLE_API_KEY=your-key
+DATABASE_URL=sqlite:///./customer_care_bot.db
+SECRET_KEY=your-secret
+```
+
+The `.gitignore` excludes `.env` by default.
+
+### Production (Railway)
+```bash
+railway variables set GEMINI_API_KEY=your-key
+railway variables set GOOGLE_API_KEY=your-key
+railway variables set DATABASE_URL=postgresql://...
+railway variables set SECRET_KEY=your-production-secret
+```
+
+---
+
+## File System Permissions
+
+```bash
+# SQLite database — owner read/write only
+chmod 600 customer_care_bot.db
+
+# ChromaDB store — owner read/write/execute
+chmod 700 chromadb_store
+```
+
+---
+
+## Production Checklist
+
+- [ ] `SECRET_KEY` is a long random string (not `changeme`)
+- [ ] `DATABASE_URL` points to PostgreSQL (not SQLite)
+- [ ] `.env` is in `.gitignore` and not committed
+- [ ] CORS `allow_origins` restricted to your frontend domain
+- [ ] HTTPS enforced (Railway and Vercel do this automatically)
+- [ ] API keys rotated if compromised (delete company, recreate)

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Customer Care Bot - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .api-key-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .api-key-section input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-top: 10px;
+            font-family: monospace;
+        }
+
+        .api-key-section input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin-bottom: 25px;
+            padding: 20px;
+            border-radius: 12px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: 50px;
+        }
+
+        .bot-message {
+            background: #f0f4ff;
+            color: #333;
+            margin-right: 50px;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .message-content {
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .input-section {
+            background: white;
+            border-radius: 16px;
+            padding: 20px 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .input-section form {
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-section input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+
+        .input-section input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-section button {
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .input-section button:hover {
+            transform: translateY(-2px);
+        }
+
+        .input-section button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 10px 20px;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite both;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .preset-messages {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .preset-btn {
+            padding: 8px 16px;
+            background: #f0f4ff;
+            color: #3730a3;
+            border: none;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            background: #e0e7ff;
+        }
+
+        .footer {
+            text-align: center;
+            color: rgba(255,255,255,0.7);
+            font-size: 13px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Customer Care Bot - Demo</h1>
+            <p>Test the chatbot with your Gemini API key!</p>
+            
+            <div class="api-key-section">
+                <label><strong>Gemini API Key</strong></label>
+                <input 
+                    type="text" 
+                    id="apiKey" 
+                    placeholder="Enter your Gemini API key..."
+                    value=""
+                >
+            </div>
+        </div>
+
+        <div class="chat-container" id="chatContainer">
+            <div class="message bot-message">
+                <div class="message-header">
+                    <span>🤖 Bot</span>
+                    <span id="time1"></span>
+                </div>
+                <div class="message-content">
+                    Hi there! I'm your AI Customer Care assistant. How can I help you today? Feel free to ask me anything!
+                </div>
+            </div>
+        </div>
+
+        <div class="input-section">
+            <form id="chatForm">
+                <input 
+                    type="text" 
+                    id="userInput" 
+                    placeholder="Type your message here..."
+                    autocomplete="off"
+                >
+                <button type="submit" id="sendBtn">Send</button>
+            </form>
+            
+            <div class="preset-messages">
+                <button class="preset-btn" data-msg="Hello!">Hello!</button>
+                <button class="preset-btn" data-msg="How do I track my order?">How do I track my order?</button>
+                <button class="preset-btn" data-msg="This product is terrible! I'm so frustrated!">Angry customer</button>
+                <button class="preset-btn" data-msg="Thank you for your help!">Thank you!</button>
+                <button class="preset-btn" data-msg="I need to speak to a human agent.">Request human</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Built with ❤️ using Gemini API</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('time1').textContent = new Date().toLocaleTimeString();
+
+        // Preset message buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('userInput').value = btn.dataset.msg;
+            });
+        });
+
+        // Chat form submission
+        document.getElementById('chatForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userInput = document.getElementById('userInput');
+            const message = userInput.value.trim();
+            const apiKey = document.getElementById('apiKey').value.trim();
+            
+            if (!message) return;
+            if (!apiKey) {
+                alert('Please enter a Gemini API key first!');
+                return;
+            }
+            
+            // Add user message
+            addMessage(message, 'user');
+            userInput.value = '';
+            
+            // Show typing indicator
+            showTypingIndicator();
+            
+            try {
+                // Call Gemini API
+                const response = await callGeminiAPI(message, apiKey);
+                
+                // Remove typing indicator and add bot response
+                removeTypingIndicator();
+                addMessage(response, 'bot');
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage(`Sorry, I encountered an error: ${error.message}`, 'bot');
+            }
+        });
+
+        function addMessage(content, sender) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message`;
+            
+            const header = document.createElement('div');
+            header.className = 'message-header';
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = sender === 'user' ? '👤 You' : '🤖 Bot';
+            const timeSpan = document.createElement('span');
+            timeSpan.textContent = new Date().toLocaleTimeString();
+            header.appendChild(nameSpan);
+            header.appendChild(timeSpan);
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            messageDiv.appendChild(header);
+            messageDiv.appendChild(contentDiv);
+            chatContainer.appendChild(messageDiv);
+            
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const chatContainer = document.getElementById('chatContainer');
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typingIndicator';
+            typingDiv.className = 'message bot-message';
+            typingDiv.innerHTML = `
+                <div class="message-header">
+                    <span>🤖 Bot</span>
+                </div>
+                <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            chatContainer.appendChild(typingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const typingDiv = document.getElementById('typingIndicator');
+            if (typingDiv) {
+                typingDiv.remove();
+            }
+        }
+
+        async function callGeminiAPI(message, apiKey) {
+            const systemPrompt = `You are a helpful, empathetic customer care assistant. Your role is to assist customers with their queries professionally, compassionately, and with genuine care for their experience.
+
+Core Principles:
+1. Empathy First: Always respond with empathy, especially when the customer seems upset, frustrated, anxious, or angry
+2. Active Listening: Acknowledge the customer's feelings before addressing their issue
+3. Clarity & Simplicity: Be clear, direct, and easy to understand
+4. Honesty & Transparency: If you don't know something, say so honestly
+5. Problem-Solving: Focus on solving the customer's problem efficiently
+6. Positive Tone: Maintain a warm, friendly, and reassuring tone
+
+Empathetic Response Examples:
+- "I'm sorry to hear you're having trouble with that. Let's see how we can fix this together."
+- "That sounds frustrating. I understand how important this is to you."
+- "Thank you for bringing this to our attention. We appreciate your patience."
+- "I completely understand. Let's work through this step by step."`;
+
+            const fullPrompt = `${systemPrompt}\n\nCustomer: ${message}\nAssistant:`;
+            
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: fullPrompt
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.7,
+                        maxOutputTokens: 1000
+                    }
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: { message: 'Unknown error' } }));
+                throw new Error(errorData.error?.message || `API error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                return data.candidates[0].content.parts[0].text.trim();
+            }
+            
+            throw new Error('No response from API');
+        }
+    </script>
+</body>
+</html>

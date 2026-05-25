@@ -3,20 +3,20 @@ import { v4 as uuidv4 } from 'uuid'
 import MessageBubble from './MessageBubble'
 import TypingIndicator from './TypingIndicator'
 import EscalationAlert from './EscalationAlert'
-import { sendMessage } from '../services/api'
+import { sendMessageStream } from '../services/api'
 
-const SESSION_KEY = 'care_bot_session_id'
-
-function getOrCreateSessionId() {
-  let id = localStorage.getItem(SESSION_KEY)
-  if (!id) {
-    id = uuidv4()
-    localStorage.setItem(SESSION_KEY, id)
+export default function ChatWidget({ companySlug = 'demo-corp' }) {
+  const SESSION_KEY = `care_bot_session_id_${companySlug}`
+  
+  const getOrCreateSessionId = () => {
+    let id = localStorage.getItem(SESSION_KEY)
+    if (!id) {
+      id = uuidv4()
+      localStorage.setItem(SESSION_KEY, id)
+    }
+    return id
   }
-  return id
-}
 
-export default function ChatWidget() {
   const [sessionId, setSessionId] = useState(getOrCreateSessionId)
   const [messages, setMessages] = useState([
     {
@@ -53,32 +53,64 @@ export default function ChatWidget() {
     setLoading(true)
     setError(null)
 
+    // Add an empty bot message that we'll fill in token by token
+    const botMsgId = Date.now()
+    setMessages((prev) => [
+      ...prev,
+      { role: 'assistant', content: '', timestamp: new Date().toISOString(), _id: botMsgId, _streaming: true },
+    ])
+
     try {
-      const data = await sendMessage(sessionId, text)
+      let accumulated = ''
+
+      const metadata = await sendMessageStream(
+        sessionId,
+        text,
+        (token, reset = false) => {
+          if (reset) {
+            accumulated = ''
+          } else {
+            accumulated += token
+          }
+          setMessages((prev) =>
+            prev.map((m) =>
+              m._id === botMsgId ? { ...m, content: accumulated } : m
+            )
+          )
+        },
+        companySlug
+      )
 
       // Sync session id if backend assigned a new one
-      if (data.session_id && data.session_id !== sessionId) {
-        setSessionId(data.session_id)
-        localStorage.setItem(SESSION_KEY, data.session_id)
+      if (metadata?.session_id && metadata.session_id !== sessionId) {
+        setSessionId(metadata.session_id)
+        localStorage.setItem(SESSION_KEY, metadata.session_id)
       }
 
-      const botMsg = {
-        role: 'assistant',
-        content: data.response,
-        timestamp: data.timestamp || new Date().toISOString(),
-      }
-      setMessages((prev) => [...prev, botMsg])
+      // Mark streaming done
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === botMsgId ? { ...m, _streaming: false } : m
+        )
+      )
 
-      if (data.is_escalated) setIsEscalated(true)
+      if (metadata?.is_escalated) setIsEscalated(true)
     } catch (err) {
       console.error('Chat error:', err)
+      // Replace the empty streaming message with an error note
+      setMessages((prev) =>
+        prev.map((m) =>
+          m._id === botMsgId
+            ? { ...m, content: 'Sorry, could not reach the server. Please try again.', _streaming: false }
+            : m
+        )
+      )
       setError(`Could not reach the server: ${err.message}`)
     } finally {
       setLoading(false)
-      // Small delay so the DOM updates before we focus
       setTimeout(() => inputRef.current?.focus(), 50)
     }
-  }, [input, loading, sessionId])
+  }, [input, loading, sessionId, companySlug])
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -136,9 +168,9 @@ export default function ChatWidget() {
       {/* ── Messages ── */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-50">
         {messages.map((msg, i) => (
-          <MessageBubble key={i} message={msg} />
+          <MessageBubble key={msg._id || i} message={msg} />
         ))}
-        <TypingIndicator visible={loading} />
+        <TypingIndicator visible={loading && messages[messages.length - 1]?.content === ''} />
         <div ref={bottomRef} />
       </div>
 

@@ -1,3 +1,24 @@
+"""
+ChromaDB client — manages per-company vector collections.
+
+Collection naming: kb_{company_slug}
+  e.g. "acme-corp" → "kb_acme-corp"
+
+Each collection uses:
+  - hnsw:space=cosine  (cosine similarity)
+  - ChromaDB's built-in all-MiniLM-L6-v2 embeddings (384-dim)
+
+The module maintains a module-level cache (_collections dict) so collections
+are not re-fetched from disk on every request.
+
+Key functions:
+  get_collection()    — get or create a company's collection
+  add_documents()     — add Q&A documents with metadata
+  query_documents()   — simple text query (used by legacy code)
+  get_document_count()— count docs in a collection
+  reset_collection()  — drop and recreate (used on CSV re-upload)
+  delete_collection() — permanent delete (used on company deletion)
+"""
 import logging
 import re
 from typing import Any, Dict, List, Optional
