@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     CHROMA_PERSIST_PATH: str = "./chromadb_store"
     MAX_TOKENS: int = 1024
     CONFIDENCE_THRESHOLD: float = 0.70
-    PORT: int = 8000
+    PORT: int = 10000
     FRONTEND_URL: str = "http://localhost:3000"
     SECRET_KEY: str = "changeme"
     DATABASE_URL: str = "sqlite:///./customer_care_bot.db"
