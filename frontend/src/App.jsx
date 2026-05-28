@@ -35,7 +35,12 @@ function Header() {
 
 function HomePage() {
   const [searchParams] = useSearchParams()
-  const companySlug = searchParams.get('company') || 'demo-corp'
+  
+  // Find a logged in or created company in local storage
+  const localCompanyKey = Object.keys(localStorage).find(k => k.startsWith('care_bot_company_'))
+  const localCompanySlug = localCompanyKey ? localCompanyKey.replace('care_bot_company_', '') : null
+  
+  const companySlug = searchParams.get('company') || localCompanySlug || 'demo-corp'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex flex-col">

@@ -221,10 +221,10 @@ async def chat_stream(request: ChatRequest):
         system_content += f"\n\n{context}"
     else:
         system_content += (
-            "\n\nNo relevant knowledge snippets were retrieved for this query. "
-            "Do not give a generic refusal. Provide practical troubleshooting steps, "
-            "ask only the most important follow-up details, and offer escalation for "
-            "account-specific actions."
+            "\n\nNo exact knowledge snippets were retrieved for this query. "
+            "However, you MUST provide helpful, actionable, and specific troubleshooting steps based on standard industry practices for this type of issue. "
+            "Do not give a generic refusal or just ask them to contact support. Instead, give them concrete things they can try immediately, "
+            "ask 1-2 targeted follow-up questions to narrow down the problem, and only then offer escalation as a last resort."
         )
     if session_summary:
         system_content += f"\n\nConversation so far:\n{session_summary}"
