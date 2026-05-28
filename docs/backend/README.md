@@ -9,6 +9,7 @@ The backend is a FastAPI application providing a multi-tenant AI customer care A
 - [Setup Guide](./setup.md)
 - [API Reference](./api.md)
 - [Maintenance Guide](./maintenance.md)
+- [Railway Deployment](../RAILWAY_DEPLOYMENT.md)
 
 ---
 

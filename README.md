@@ -47,8 +47,9 @@ SQLite / PostgreSQL      ←  Company profiles + hashed API keys
 | Frontend | React 18 + Vite + Tailwind CSS |
 | SQL DB | SQLite (dev) / PostgreSQL (prod) |
 | ORM | SQLAlchemy 2.0 |
-| Deploy (BE) | Railway |
+| Deploy (BE) | **Railway** ($5/month free credit, always-on) |
 | Deploy (FE) | Vercel |
+| CI/CD | GitHub Actions |
 
 ---
 
@@ -174,17 +175,36 @@ Free tier limits (2026): `gemini-3.5-flash` and `gemini-2.0-flash-lite` both off
 
 ## Deploy
 
-### Backend → Railway
+### Backend → Railway (Recommended)
+
+Railway provides **always-on hosting with $5/month free credit** (no spin-down like Render).
+
+#### Option 1: GitHub Actions (Automatic)
+
+1. Get your Railway token from https://railway.app/account/tokens
+2. Add GitHub secrets:
+   - `RAILWAY_TOKEN`: Your Railway API token
+   - `RAILWAY_PROJECT_ID`: Your Railway project ID
+3. Push to main branch — GitHub Actions will auto-deploy
+
+```bash
+git add .
+git commit -m "Deploy to Railway"
+git push origin main
+```
+
+#### Option 2: CLI Manual Deployment
 
 ```bash
 cd backend
 railway login
-railway init
+railway link                    # Select or create project
 railway variables set GEMINI_API_KEY=your-key
 railway variables set GOOGLE_API_KEY=your-key
-railway variables set LLM_MODEL=gemini-3.5-flash
 railway up
 ```
+
+**See [RAILWAY_DEPLOYMENT.md](docs/RAILWAY_DEPLOYMENT.md) for detailed setup.**
 
 ### Frontend → Vercel
 
