@@ -57,10 +57,10 @@ Free tier limits (2026):
 ### SQLite Database
 ```bash
 # Backup
-cp customer_care_bot.db customer_care_bot.backup.$(date +%Y%m%d).db
+cp companies.db companies.backup.$(date +%Y%m%d).db
 
 # Restore
-cp customer_care_bot.backup.20260525.db customer_care_bot.db
+cp companies.backup.20260525.db companies.db
 ```
 
 ### PostgreSQL

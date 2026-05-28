@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
     SECRET_KEY: str = "changeme"
     DATABASE_URL: str = "sqlite:///./customer_care_bot.db"
+    # Separate database for company profiles (and API key hashes).
+    COMPANY_DATABASE_URL: str = "sqlite:///./companies.db"
 
     @property
     def fallback_model_list(self) -> list[str]:

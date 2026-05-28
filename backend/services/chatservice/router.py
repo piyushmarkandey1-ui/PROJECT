@@ -9,7 +9,7 @@ from typing import AsyncGenerator, Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
-from core.auth import get_current_company
+from core.auth import create_access_token, get_current_company
 from core.config import get_settings
 from database.chromadb_client import get_document_count, reset_collection
 from database.company_store import (
@@ -18,6 +18,7 @@ from database.company_store import (
     get_company_by_slug,
     list_companies,
     update_company,
+    verify_company_password,
 )
 from models.schemas import (
     ChatRequest,
@@ -32,6 +33,8 @@ from models.schemas import (
     KnowledgeUploadResponse,
     SessionCreateResponse,
     SessionHistoryResponse,
+    LoginRequest,
+    LoginResponse,
 )
 from services.chatservice.handler import ChatHandler
 from services.ragservice.embedder import KnowledgeBaseBuilder
@@ -50,6 +53,28 @@ def _get_chat_handler() -> ChatHandler:
     if _chat_handler is None:
         _chat_handler = ChatHandler()
     return _chat_handler
+
+
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+
+@router.post("/auth/login", response_model=LoginResponse)
+async def login(login_request: LoginRequest):
+    """Authenticate with email and password, return JWT token."""
+    company = verify_company_password(login_request.email, login_request.password)
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+    
+    access_token = create_access_token(company.id, company.slug)
+    return LoginResponse(
+        access_token=access_token,
+        token_type="bearer",
+        company=company,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +98,12 @@ async def list_companies_endpoint():
     """List all companies (admin endpoint)."""
     companies = list_companies()
     return CompanyListResponse(companies=companies, count=len(companies))
+
+
+@router.get("/companies/me", response_model=Company)
+async def get_my_company_endpoint(current_company: Company = Depends(get_current_company)):
+    """Get the authenticated company's profile from its API key."""
+    return current_company
 
 
 @router.get("/companies/{slug}", response_model=Company)
@@ -188,6 +219,13 @@ async def chat_stream(request: ChatRequest):
     system_content = guardrails.get_system_prompt(company.name)
     if context:
         system_content += f"\n\n{context}"
+    else:
+        system_content += (
+            "\n\nNo relevant knowledge snippets were retrieved for this query. "
+            "Do not give a generic refusal. Provide practical troubleshooting steps, "
+            "ask only the most important follow-up details, and offer escalation for "
+            "account-specific actions."
+        )
     if session_summary:
         system_content += f"\n\nConversation so far:\n{session_summary}"
 

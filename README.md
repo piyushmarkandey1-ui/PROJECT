@@ -136,16 +136,18 @@ curl -X POST http://localhost:8000/api/knowledge/upload-csv \
 | `POST` | `/api/companies` | — | Create company (returns API key once) |
 | `GET` | `/api/companies` | — | List all companies |
 | `GET` | `/api/companies/{slug}` | — | Get company by slug |
-| `PUT` | `/api/companies/{slug}` | API Key | Update company |
-| `DELETE` | `/api/companies/{slug}` | API Key | Delete company + KB |
+| `GET` | `/api/companies/me` | API Key / JWT | Get authenticated company profile |
+| `PUT` | `/api/companies/{slug}` | API Key / JWT | Update company |
+| `DELETE` | `/api/companies/{slug}` | API Key / JWT | Delete company + KB |
 | `POST` | `/api/demo-company` | — | Create/reset demo company |
+| `POST` | `/api/auth/login` | — | Login with email/password (returns JWT) |
 | `POST` | `/api/chat` | — | Send message, get full JSON response |
 | `POST` | `/api/chat/stream` | — | Send message, stream tokens via SSE |
 | `POST` | `/api/session/new` | — | Create new session |
 | `GET` | `/api/session/{slug}/{id}/history` | — | Get session history |
 | `DELETE` | `/api/session/{slug}/{id}` | — | Clear session |
-| `POST` | `/api/knowledge/upload-csv` | API Key | Upload FAQ CSV |
-| `GET` | `/api/knowledge/stats` | API Key | Knowledge base stats |
+| `POST` | `/api/knowledge/upload-csv` | API Key / JWT | Upload FAQ CSV |
+| `GET` | `/api/knowledge/stats` | API Key / JWT | Knowledge base stats |
 | `GET` | `/api/health` | — | Health check |
 
 ---

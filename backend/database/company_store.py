@@ -5,6 +5,8 @@ Key functions:
   create_company()        — auto-generates slug + API key, stores hash
   get_company_by_api_key()— hashes the provided key and looks up by hash
   get_company_by_slug()   — public lookup (no auth required)
+  get_company_by_email()  — lookup by email for password authentication
+  verify_company_password() — verify password against hash
   update_company()        — only name, email, contact_phone are updatable
   delete_company()        — also triggers ChromaDB collection deletion in router
 
@@ -12,6 +14,10 @@ API key lifecycle:
   1. _generate_api_key()  → 32-char cryptographically secure random string
   2. _hash_api_key()      → SHA-256 hex digest stored in DB
   3. Plaintext returned once in CompanyCreateResponse — never stored
+
+Password lifecycle:
+  1. _hash_password()     → bcrypt hash stored in DB
+  2. _verify_password()   — verify plaintext against bcrypt hash
 """
 import hashlib
 import logging
@@ -21,14 +27,17 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from database.db import get_db_session
+from database.company_db import get_db_session
 from database.models import Company
 from models.schemas import Company as CompanySchema
 from models.schemas import CompanyCreate, CompanyCreateResponse
 
 logger = logging.getLogger(__name__)
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def _generate_api_key(length: int = 32) -> str:
@@ -40,6 +49,16 @@ def _generate_api_key(length: int = 32) -> str:
 def _hash_api_key(api_key: str) -> str:
     """Hash an API key using SHA-256."""
     return hashlib.sha256(api_key.encode("utf-8")).hexdigest()
+
+
+def _hash_password(password: str) -> str:
+    """Hash a password using bcrypt."""
+    return pwd_context.hash(password)
+
+
+def _verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its hash."""
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 def _generate_slug(name: str) -> str:
@@ -68,9 +87,19 @@ def create_company(company_create: CompanyCreate) -> CompanyCreateResponse:
             # Append timestamp to make unique
             slug = f"{slug}-{int(datetime.utcnow().timestamp())}"
         
+        # Check if email already exists
+        existing_email = session.query(Company).filter(Company.email == company_create.email).first()
+        if existing_email:
+            raise ValueError(f"Company with email {company_create.email} already exists")
+        
         # Auto-generate API key
         api_key = _generate_api_key(32)
         api_key_hash = _hash_api_key(api_key)
+        
+        # Hash password if provided
+        password_hash = None
+        if hasattr(company_create, 'password') and company_create.password:
+            password_hash = _hash_password(company_create.password)
         
         company_id = str(uuid.uuid4())
         now = datetime.utcnow()
@@ -82,6 +111,7 @@ def create_company(company_create: CompanyCreate) -> CompanyCreateResponse:
             email=company_create.email,
             contact_phone=company_create.contact_phone,
             api_key_hash=api_key_hash,
+            password_hash=password_hash,
             created_at=now,
             updated_at=now,
         )
@@ -145,6 +175,47 @@ def get_company_by_api_key(api_key: str) -> Optional[CompanySchema]:
         company = session.query(Company).filter(Company.api_key_hash == api_key_hash).first()
         if not company:
             return None
+        return CompanySchema(
+            id=company.id,
+            name=company.name,
+            slug=company.slug,
+            email=company.email,
+            contact_phone=company.contact_phone,
+            created_at=company.created_at,
+            updated_at=company.updated_at,
+        )
+
+
+def get_company_by_email(email: str) -> Optional[CompanySchema]:
+    """Get company by email."""
+    with get_db_session() as session:
+        company = session.query(Company).filter(Company.email == email).first()
+        if not company:
+            return None
+        return CompanySchema(
+            id=company.id,
+            name=company.name,
+            slug=company.slug,
+            email=company.email,
+            contact_phone=company.contact_phone,
+            created_at=company.created_at,
+            updated_at=company.updated_at,
+        )
+
+
+def verify_company_password(email: str, password: str) -> Optional[CompanySchema]:
+    """Verify company credentials and return company if valid."""
+    with get_db_session() as session:
+        company = session.query(Company).filter(Company.email == email).first()
+        if not company:
+            return None
+        
+        if not company.password_hash:
+            return None
+        
+        if not _verify_password(password, company.password_hash):
+            return None
+        
         return CompanySchema(
             id=company.id,
             name=company.name,

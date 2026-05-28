@@ -62,7 +62,8 @@ class KnowledgeBaseBuilder:
             try:
                 add_documents(company_slug=company_slug, texts=texts, metadatas=metadatas, ids=ids)
                 total = get_document_count(company_slug)
-                print(f"  ✅ Stored {len(texts)} docs. Total in KB for '{company_slug}': {total}")
+                # Avoid emoji characters in console output (Windows cp1252 can crash).
+                print(f"  Stored {len(texts)} docs. Total in KB for '{company_slug}': {total}")
                 return len(texts)
             except Exception as e:
                 wait = 2 ** attempt
@@ -91,7 +92,8 @@ class KnowledgeBaseBuilder:
         if self._already_seeded(company_slug) and not force_reload:
             count = get_document_count(company_slug)
             logger.info("KB already seeded (%d docs) for company %s. Skipping CSV load.", count, company_slug)
-            print(f"  ℹ️  Knowledge base for '{company_slug}' already has {count} docs — skipping reload.")
+            # Avoid emoji characters in console output (Windows cp1252 can crash).
+            print(f"  Info: Knowledge base for '{company_slug}' already has {count} docs - skipping reload.")
             return count
 
         if force_reload:

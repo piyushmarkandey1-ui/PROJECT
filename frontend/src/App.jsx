@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useSearchParams } from 'r
 import ChatWidget from './components/ChatWidget'
 import CreateCompany from './components/CreateCompany'
 import CompanyDashboard from './components/CompanyDashboard'
+import LoginCompany from './components/LoginCompany'
 
 function Header() {
   return (
@@ -17,8 +18,14 @@ function Header() {
           <Link to="/" className="text-white/70 hover:text-white transition-colors text-sm font-medium">
             Demo Chat
           </Link>
-          <Link to="/create" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-            Create Company
+          <Link to="/login" className="text-white/70 hover:text-white transition-colors text-sm font-medium">
+            Company Login
+          </Link>
+          <Link
+            to="/signup"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            Company Signup
           </Link>
         </div>
       </div>
@@ -60,7 +67,8 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/create" element={<CreateCompany />} />
+        <Route path="/signup" element={<CreateCompany />} />
+        <Route path="/login" element={<LoginCompany />} />
         <Route path="/dashboard/:slug" element={<CompanyDashboard />} />
       </Routes>
     </Router>

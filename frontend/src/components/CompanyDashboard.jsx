@@ -27,6 +27,7 @@ export default function CompanyDashboard() {
   const { slug } = useParams()
   const location = useLocation()
   const [company, setCompany] = useState(location.state?.company || null)
+  const [apiKey, setApiKey] = useState(() => (slug ? localStorage.getItem(`care_bot_api_key_${slug}`) : null))
   const [knowledgeStats, setKnowledgeStats] = useState(null)
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -34,11 +35,18 @@ export default function CompanyDashboard() {
   const [uploadSuccess, setUploadSuccess] = useState(null)
 
   useEffect(() => {
-    if (!company && slug) {
+    if (!slug) return
+
+    // Prefer route state (after signup) but fall back to localStorage or public lookup.
+    const storedApiKey = localStorage.getItem(`care_bot_api_key_${slug}`)
+    setApiKey(storedApiKey)
+
+    if (!company) {
       loadCompany()
     }
-    if (slug) {
-      loadKnowledgeStats()
+
+    if (storedApiKey) {
+      loadKnowledgeStats(storedApiKey)
     }
   }, [slug])
 
@@ -51,9 +59,9 @@ export default function CompanyDashboard() {
     }
   }
 
-  const loadKnowledgeStats = async () => {
+  const loadKnowledgeStats = async (key) => {
     try {
-      const data = await getKnowledgeStats(slug)
+      const data = await getKnowledgeStats(slug, key)
       setKnowledgeStats(data)
     } catch (err) {
       console.error('Failed to load knowledge stats:', err)
@@ -67,15 +75,15 @@ export default function CompanyDashboard() {
   }
 
   const handleUpload = async () => {
-    if (!selectedFile || !company) return
+    if (!selectedFile || !apiKey) return
     setUploading(true)
     setUploadError(null)
     setUploadSuccess(null)
     try {
-      const result = await uploadKnowledgeBase(selectedFile, company.api_key)
+      const result = await uploadKnowledgeBase(selectedFile, apiKey)
       setUploadSuccess(result.message)
       setSelectedFile(null)
-      loadKnowledgeStats()
+      loadKnowledgeStats(apiKey)
     } catch (err) {
       setUploadError(err.message)
     } finally {
@@ -126,6 +134,12 @@ export default function CompanyDashboard() {
                   </span>
                 </div>
               </div>
+
+              {!apiKey && (
+                <div className="mb-4 p-4 bg-blue-500/15 border border-blue-500/30 rounded-xl text-blue-100 text-sm">
+                  To upload or refresh knowledge base stats, log in with your company API key.
+                </div>
+              )}
               
               <div className="space-y-3">
                 <div>
@@ -152,7 +166,7 @@ export default function CompanyDashboard() {
                 )}
                 <button
                   onClick={handleUpload}
-                  disabled={!selectedFile || uploading}
+                  disabled={!selectedFile || uploading || !apiKey}
                   className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-xl transition-colors"
                 >
                   {uploading ? 'Uploading...' : 'Upload Knowledge Base'}

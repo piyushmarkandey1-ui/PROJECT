@@ -7,12 +7,29 @@
 
 ## Authentication
 
-Protected endpoints require an API key via the `X-API-Key` header.  
-The API key is returned **once** when a company is created — store it securely.
+Protected endpoints support **two authentication methods**:
+
+### 1. API Key Authentication
+Use the `X-API-Key` header. The API key is returned **once** when a company is created — store it securely.
 
 ```bash
 curl -X POST http://localhost:8000/api/knowledge/upload-csv \
   -H "X-API-Key: EDagr3SMHDxrfTXtjyYOotqHvgvHhuxG" \
+  -F "file=@faqs.csv"
+```
+
+### 2. JWT Token Authentication
+Use the `Authorization: Bearer <token>` header. Obtain a token by logging in with email/password.
+
+```bash
+# Login to get JWT token
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"support@acme.com","password":"yourpassword"}'
+
+# Use the token for protected endpoints
+curl -X POST http://localhost:8000/api/knowledge/upload-csv \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   -F "file=@faqs.csv"
 ```
 
@@ -31,6 +48,7 @@ Content-Type: application/json
   "name": "Acme Corp",
   "email": "support@acme.com",
   "contact_phone": "555-1234",
+  "password": "securePassword123",  ← optional, enables email/password login
   "slug": "acme-corp"   ← optional, auto-generated from name if omitted
 }
 ```
@@ -84,6 +102,50 @@ GET /api/companies/{slug}
 
 ---
 
+### Login with Email/Password
+Authenticate with email and password to receive a JWT access token.
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "email": "support@acme.com",
+  "password": "securePassword123"
+}
+```
+
+**Response (200):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "company": {
+    "id": "uuid",
+    "name": "Acme Corp",
+    "slug": "acme-corp",
+    "email": "support@acme.com",
+    "contact_phone": "555-1234",
+    "created_at": "2026-05-25T10:00:00Z",
+    "updated_at": "2026-05-25T10:00:00Z"
+  }
+}
+```
+
+Use the `access_token` in the `Authorization: Bearer <token>` header for protected endpoints.
+
+---
+
+### Get Authenticated Company (Login)
+```http
+GET /api/companies/me
+X-API-Key: your-api-key
+```
+
+Returns the company profile tied to the provided API key.
+
+---
+
 ### List All Companies
 ```http
 GET /api/companies
@@ -103,6 +165,8 @@ GET /api/companies
 ```http
 PUT /api/companies/{slug}
 X-API-Key: your-api-key
+OR
+Authorization: Bearer your-jwt-token
 Content-Type: application/json
 
 {
@@ -112,7 +176,7 @@ Content-Type: application/json
 }
 ```
 
-> Only the company's own API key can update its profile.
+> Only the company's own API key or JWT token can update its profile.
 
 ---
 
@@ -120,6 +184,8 @@ Content-Type: application/json
 ```http
 DELETE /api/companies/{slug}
 X-API-Key: your-api-key
+OR
+Authorization: Bearer your-jwt-token
 ```
 
 > Deletes the company profile and its ChromaDB knowledge base collection.
@@ -250,6 +316,8 @@ DELETE /api/session/{company_slug}/{session_id}
 ```http
 POST /api/knowledge/upload-csv
 X-API-Key: your-api-key
+OR
+Authorization: Bearer your-jwt-token
 Content-Type: multipart/form-data
 
 file: your-faqs.csv
@@ -278,12 +346,12 @@ What is your return policy?,We accept returns within 30 days of delivery.,return
 ```http
 GET /api/knowledge/stats
 X-API-Key: your-api-key
+OR
+Authorization: Bearer your-jwt-token
 ```
 
-Or with query param (no auth needed):
-```http
-GET /api/knowledge/stats?company_slug=acme-corp
-```
+This endpoint is protected because it is tied to a specific company.
+The frontend uses your API key or JWT token to load the current document count.
 
 **Response (200):**
 ```json
@@ -318,8 +386,8 @@ GET /api/health
 | Status | Meaning |
 |--------|---------|
 | `400` | Bad request (validation error, duplicate slug) |
-| `401` | Missing or invalid `X-API-Key` |
-| `403` | API key valid but wrong company (e.g., updating another company) |
+| `401` | Missing or invalid authentication (API key or JWT token) |
+| `403` | Authentication valid but wrong company (e.g., updating another company) |
 | `404` | Company or session not found |
 | `500` | Internal server error |
 

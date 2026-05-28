@@ -80,7 +80,7 @@ _PASSWORD_PATTERN = re.compile(r"(?i)(password\s*[:=]\s*\S+)")
 # .env — never commit to git
 GEMINI_API_KEY=your-key
 GOOGLE_API_KEY=your-key
-DATABASE_URL=sqlite:///./customer_care_bot.db
+COMPANY_DATABASE_URL=sqlite:///./companies.db
 SECRET_KEY=your-secret
 ```
 
@@ -90,7 +90,7 @@ The `.gitignore` excludes `.env` by default.
 ```bash
 railway variables set GEMINI_API_KEY=your-key
 railway variables set GOOGLE_API_KEY=your-key
-railway variables set DATABASE_URL=postgresql://...
+railway variables set COMPANY_DATABASE_URL=postgresql://...
 railway variables set SECRET_KEY=your-production-secret
 ```
 
@@ -100,7 +100,7 @@ railway variables set SECRET_KEY=your-production-secret
 
 ```bash
 # SQLite database — owner read/write only
-chmod 600 customer_care_bot.db
+chmod 600 companies.db
 
 # ChromaDB store — owner read/write/execute
 chmod 700 chromadb_store
@@ -111,7 +111,7 @@ chmod 700 chromadb_store
 ## Production Checklist
 
 - [ ] `SECRET_KEY` is a long random string (not `changeme`)
-- [ ] `DATABASE_URL` points to PostgreSQL (not SQLite)
+- [ ] `COMPANY_DATABASE_URL` points to PostgreSQL (not SQLite)
 - [ ] `.env` is in `.gitignore` and not committed
 - [ ] CORS `allow_origins` restricted to your frontend domain
 - [ ] HTTPS enforced (Railway and Vercel do this automatically)

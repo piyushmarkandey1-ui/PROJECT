@@ -28,6 +28,7 @@ export default function CreateCompany() {
     name: '',
     email: '',
     contact_phone: '',
+    password: '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -40,6 +41,9 @@ export default function CreateCompany() {
     try {
       const company = await createCompany(formData)
       setCreatedCompany(company)
+      // Store for subsequent dashboard actions (KB upload, stats).
+      localStorage.setItem(`care_bot_api_key_${company.slug}`, company.api_key)
+      localStorage.setItem(`care_bot_company_${company.slug}`, JSON.stringify(company))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -105,6 +109,19 @@ export default function CreateCompany() {
                     placeholder="555-123-4567"
                     className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">Password (optional, min 8 chars)</label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Create a password for email login"
+                    minLength={8}
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="text-slate-500 text-xs mt-1">Optional: If provided, enables email/password login</p>
                 </div>
                 {error && (
                   <div className="p-4 bg-red-500/20 border border-red-500/50 rounded-xl text-red-300 text-sm">

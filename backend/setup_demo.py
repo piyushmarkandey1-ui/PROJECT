@@ -3,7 +3,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from database.db import init_db, create_tables
+from database.company_db import init_db, create_tables
 from database.company_store import (
     create_company,
     get_company_by_slug,

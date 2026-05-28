@@ -129,6 +129,13 @@ class ChatHandler:
         system_content = self._guardrails.get_system_prompt(company_name)
         if context:
             system_content += f"\n\n{context}"
+        else:
+            system_content += (
+                "\n\nNo relevant knowledge snippets were retrieved for this query. "
+                "Do not give a generic refusal. Provide practical troubleshooting steps, "
+                "request the exact details needed to resolve the issue, and offer escalation "
+                "for account-specific actions."
+            )
         if session_summary:
             system_content += f"\n\nConversation so far:\n{session_summary}"
 

@@ -26,3 +26,10 @@ npm run dev
 ```
 
 Visit http://localhost:5173
+
+## Auth & Company Management
+- Company Signup: `http://localhost:5173/signup`
+- Company Login (API key): `http://localhost:5173/login`
+- Company Dashboard (KB upload + stats): `http://localhost:5173/dashboard/:slug`
+
+Dashboard operations that modify or query the knowledge base require your company API key.

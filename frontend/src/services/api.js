@@ -60,6 +60,37 @@ export async function getKnowledgeStats(companySlug, apiKey) {
 }
 
 /**
+ * Authenticated company profile using API key.
+ */
+export async function getMyCompany(apiKey) {
+  if (!apiKey) throw new Error('Missing API key')
+  const res = await fetch(`${API_URL}/api/companies/me`, {
+    headers: { 'X-API-Key': apiKey },
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+/**
+ * Login with email and password, returns JWT token.
+ */
+export async function loginWithEmailPassword(email, password) {
+  const res = await fetch(`${API_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
+/**
  * Non-streaming chat — returns full response JSON.
  */
 export async function sendMessage(sessionId, message, companySlug = 'demo-corp') {

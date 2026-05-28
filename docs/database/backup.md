@@ -4,7 +4,7 @@
 
 | Data | Location | Criticality |
 |------|----------|-------------|
-| Company profiles + API key hashes | `customer_care_bot.db` | **Critical** |
+| Company profiles + API key hashes | `companies.db` | **Critical** |
 | Knowledge base embeddings | `chromadb_store/` | High (re-uploadable from CSVs) |
 | FAQ CSV source files | `backend/data/*.csv` | Medium (source of truth for KB) |
 
@@ -14,7 +14,7 @@
 
 ### Manual
 ```bash
-cp customer_care_bot.db customer_care_bot.backup.$(date +%Y%m%d).db
+cp companies.db companies.backup.$(date +%Y%m%d).db
 ```
 
 ### Automated (cron)
@@ -22,7 +22,7 @@ cp customer_care_bot.db customer_care_bot.backup.$(date +%Y%m%d).db
 # backup_sqlite.sh
 BACKUP_DIR="./backups"
 mkdir -p $BACKUP_DIR
-cp customer_care_bot.db $BACKUP_DIR/customer_care_bot_$(date +%Y%m%d_%H%M%S).db
+cp companies.db $BACKUP_DIR/companies_$(date +%Y%m%d_%H%M%S).db
 # Keep last 30 days
 find $BACKUP_DIR -name "customer_care_bot_*.db" -mtime +30 -delete
 ```
@@ -35,7 +35,7 @@ find $BACKUP_DIR -name "customer_care_bot_*.db" -mtime +30 -delete
 ### Restore
 ```bash
 # Stop server first
-cp backups/customer_care_bot_20260525_020000.db customer_care_bot.db
+cp backups/companies_20260525_020000.db companies.db
 # Restart server
 ```
 
@@ -96,7 +96,7 @@ curl -X POST http://localhost:8000/api/knowledge/upload-csv \
 
 Railway provides automatic PostgreSQL backups on paid plans. For manual backup:
 ```bash
-railway run pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
+railway run pg_dump $COMPANY_DATABASE_URL > backup_$(date +%Y%m%d).sql
 ```
 
 For ChromaDB on Railway, use a persistent volume and back it up via the Railway dashboard or CLI.

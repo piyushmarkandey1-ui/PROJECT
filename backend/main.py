@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from core.config import get_settings
-from database.db import create_tables, init_db
+from database.company_db import create_tables, init_db
 
 logging.basicConfig(
     level=logging.INFO,

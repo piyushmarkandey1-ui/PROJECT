@@ -34,8 +34,9 @@ class CompanyCreate(CompanyBase):
     Company creation request.
     API key is auto-generated server-side — do not include it in the request.
     Slug is optional — auto-derived from name if omitted.
+    Password is optional — if provided, enables email/password authentication.
     """
-    pass
+    password: Optional[str] = Field(None, min_length=8, max_length=100)
 
 
 class CompanyCreateResponse(BaseModel):
@@ -144,3 +145,18 @@ class HealthResponse(BaseModel):
     timestamp: datetime
     model: str   # current primary LLM model name
     knowledge_base_docs: int
+
+
+# ─── Authentication ───────────────────────────────────────────────────────────
+
+class LoginRequest(BaseModel):
+    """Login request with email and password."""
+    email: EmailStr
+    password: str = Field(..., min_length=1)
+
+
+class LoginResponse(BaseModel):
+    """Login response with JWT access token."""
+    access_token: str
+    token_type: str = "bearer"
+    company: Company

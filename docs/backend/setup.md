@@ -44,7 +44,7 @@ GEMINI_API_KEY=your-gemini-api-key-here
 GOOGLE_API_KEY=your-gemini-api-key-here   # same key — LangChain reads this
 LLM_MODEL=gemini-3.5-flash
 LLM_FALLBACK_MODELS=gemini-3.1-flash-lite,gemini-3-flash-preview,gemini-2.0-flash,gemini-2.0-flash-lite
-DATABASE_URL=sqlite:///./customer_care_bot.db
+COMPANY_DATABASE_URL=sqlite:///./companies.db
 CHROMA_PERSIST_PATH=./chromadb_store
 SECRET_KEY=your-secret-key-here
 PORT=8000
@@ -81,7 +81,7 @@ curl -X POST http://localhost:8000/api/knowledge/upload-csv \
 | `LLM_MODEL` | Primary Gemini model | `gemini-3.5-flash` |
 | `LLM_FALLBACK_MODELS` | Comma-separated fallback models tried on 429 | `gemini-3.1-flash-lite,...` |
 | `MAX_TOKENS` | Max tokens per LLM response | `1024` |
-| `DATABASE_URL` | SQL connection string | `sqlite:///./customer_care_bot.db` |
+| `COMPANY_DATABASE_URL` | SQL connection string for company profiles | `sqlite:///./companies.db` |
 | `CHROMA_PERSIST_PATH` | ChromaDB storage directory | `./chromadb_store` |
 | `SECRET_KEY` | App secret key | `changeme` |
 | `CONFIDENCE_THRESHOLD` | Escalation confidence threshold | `0.70` |
@@ -131,7 +131,7 @@ railway init
 railway variables set GEMINI_API_KEY=your-key
 railway variables set GOOGLE_API_KEY=your-key
 railway variables set LLM_MODEL=gemini-3.5-flash
-railway variables set DATABASE_URL=postgresql://user:pass@host:5432/db
+railway variables set COMPANY_DATABASE_URL=postgresql://user:pass@host:5432/db
 railway variables set SECRET_KEY=your-production-secret
 ```
 
@@ -146,7 +146,7 @@ railway up
 
 ### SQLite (Development — default)
 ```env
-DATABASE_URL=sqlite:///./customer_care_bot.db
+COMPANY_DATABASE_URL=sqlite:///./companies.db
 ```
 
 ### PostgreSQL (Production)

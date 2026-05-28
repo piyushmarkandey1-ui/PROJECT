@@ -75,9 +75,14 @@ class Retriever:
     def format_context(self, docs: List[RetrievedDoc]) -> str:
         if not docs:
             return ""
-        lines = ["Relevant information from the knowledge base:"]
+        lines = [
+            "Knowledge context (highest relevance first). Use this to answer precisely:",
+            "If the context does not cover the user's exact question, explicitly say what is missing.",
+        ]
         for i, doc in enumerate(docs, 1):
-            lines.append(f"\n[{i}] {doc.text}")
+            lines.append(
+                f"\n[{i}] Source: {doc.source} | Relevance: {doc.score:.2f}\n{doc.text}"
+            )
         return "\n".join(lines)
 
     def is_relevant(self, query: str, company_slug: str = "default") -> bool:

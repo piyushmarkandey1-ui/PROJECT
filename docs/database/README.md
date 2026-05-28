@@ -2,7 +2,7 @@
 
 ## Overview
 
-The system uses two databases:
+The system uses two persistence layers:
 
 1. **SQL Database** (SQLite / PostgreSQL) — company profiles, hashed API keys
 2. **Vector Database** (ChromaDB) — per-company knowledge base embeddings
@@ -18,12 +18,13 @@ The system uses two databases:
 ## Database Selection
 
 ### Development: SQLite (default)
+- Company profiles stored at `COMPANY_DATABASE_URL` (default: `./companies.db`)
 - File-based, zero configuration
-- Auto-created at `./customer_care_bot.db` on first startup
+- Auto-created on first startup
 - Not suitable for multi-worker deployments
 
 ### Production: PostgreSQL
-- Set `DATABASE_URL=postgresql://user:pass@host:5432/db` in `.env`
+- Set `COMPANY_DATABASE_URL=postgresql://user:pass@host:5432/db` in `.env`
 - Tables auto-created by SQLAlchemy on startup
 - Required for Railway multi-instance deployments
 

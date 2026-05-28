@@ -111,7 +111,7 @@ For production with higher traffic, add billing to Google AI Studio for 150-300 
 ### Pre-Deployment
 - [ ] `GEMINI_API_KEY` and `GOOGLE_API_KEY` set to same valid key
 - [ ] `SECRET_KEY` changed from `changeme`
-- [ ] `DATABASE_URL` set to PostgreSQL connection string
+- [ ] `COMPANY_DATABASE_URL` set to PostgreSQL connection string
 - [ ] CORS `allow_origins` restricted to frontend domain
 - [ ] `LLM_MODEL=gemini-3.5-flash` confirmed
 - [ ] `LLM_FALLBACK_MODELS` configured with all 4 fallbacks
@@ -122,7 +122,7 @@ railway variables set GEMINI_API_KEY=your-key
 railway variables set GOOGLE_API_KEY=your-key
 railway variables set LLM_MODEL=gemini-3.5-flash
 railway variables set LLM_FALLBACK_MODELS=gemini-3.1-flash-lite,gemini-3-flash-preview,gemini-2.0-flash,gemini-2.0-flash-lite
-railway variables set DATABASE_URL=postgresql://...
+railway variables set COMPANY_DATABASE_URL=postgresql://...
 railway variables set SECRET_KEY=your-long-random-secret
 railway up
 ```
