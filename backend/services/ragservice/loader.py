@@ -1,8 +1,8 @@
+import csv
 import logging
 import os
 from typing import List, Dict
 
-import pandas as pd
 import pypdf
 
 logger = logging.getLogger(__name__)
@@ -12,17 +12,17 @@ class DocumentLoader:
     def load_csv(self, filepath: str) -> List[str]:
         """Load CSV with 'question' and 'answer' columns."""
         try:
-            # Use pandas with proper quoting to handle commas in fields
-            df = pd.read_csv(filepath, quotechar='"', escapechar='\\')
-            if "question" not in df.columns or "answer" not in df.columns:
-                raise ValueError("CSV must have 'question' and 'answer' columns")
             docs = []
-            for _, row in df.iterrows():
-                q = str(row['question']).strip() if pd.notna(row['question']) else ""
-                a = str(row['answer']).strip() if pd.notna(row['answer']) else ""
-                if q and a:
-                    text = f"Q: {q}\nA: {a}"
-                    docs.append(text)
+            with open(filepath, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f, quotechar='"', escapechar='\\')
+                if not reader.fieldnames or 'question' not in reader.fieldnames or 'answer' not in reader.fieldnames:
+                    raise ValueError("CSV must have 'question' and 'answer' columns")
+                for row in reader:
+                    q = str(row['question']).strip() if row['question'] else ""
+                    a = str(row['answer']).strip() if row['answer'] else ""
+                    if q and a:
+                        text = f"Q: {q}\nA: {a}"
+                        docs.append(text)
             logger.info("Loaded %d documents from CSV: %s", len(docs), filepath)
             return docs
         except FileNotFoundError:

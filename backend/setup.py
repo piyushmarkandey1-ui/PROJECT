@@ -57,9 +57,10 @@ for module, pkg in packages:
 # 5. Sample FAQ data
 faq_path = os.path.join(os.path.dirname(__file__), "data", "sample_faqs.csv")
 if os.path.exists(faq_path):
-    import pandas as pd
-    df = pd.read_csv(faq_path)
-    checks.append(("✅", f"sample_faqs.csv found ({len(df)} rows)"))
+    import csv
+    with open(faq_path, 'r', encoding='utf-8') as f:
+        row_count = sum(1 for _ in csv.DictReader(f)) - 1  # Subtract header
+    checks.append(("✅", f"sample_faqs.csv found ({row_count} rows)"))
 else:
     checks.append(("❌", "data/sample_faqs.csv not found"))
 
